@@ -2,6 +2,7 @@ package com.jagger.timer.core.util
 
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
+import com.jagger.timer.core.data.model.TimelineEntry
 import com.jagger.timer.core.data.repository.PillRepository
 import kotlinx.coroutines.flow.first
 import java.time.LocalDateTime
@@ -13,6 +14,34 @@ class ScheduleManager @Inject constructor(
     private val pillRepository: PillRepository,
     private val alarmScheduler: AlarmScheduler
 ) {
+
+    suspend fun getUpcomingDoses(hours: Long = 24): List<TimelineEntry> {
+        val entries = mutableListOf<TimelineEntry>()
+        val pills = pillRepository.getAllPills().first()
+        val now = LocalDateTime.now()
+        val end = now.plusHours(hours)
+
+        for (pill in pills) {
+            val schedules = pillRepository.getSchedulesForPill(pill.id).first()
+            val logs = pillRepository.getLogsForPill(pill.id).first()
+            val lastDoseTimestamp = logs.firstOrNull()?.timestamp
+
+            for (schedule in schedules) {
+                val nextOccurrence = ScheduleCalculator.calculateNextOccurrence(
+                    schedule,
+                    lastDoseTimestamp,
+                    now
+                )
+                
+                nextOccurrence?.let {
+                    if (it.isBefore(end)) {
+                        entries.add(TimelineEntry(pill, schedule, it))
+                    }
+                }
+            }
+        }
+        return entries.sortedBy { it.dueTime }
+    }
 
     suspend fun refreshAlarms() {
         val pills = pillRepository.getAllPills().first()
