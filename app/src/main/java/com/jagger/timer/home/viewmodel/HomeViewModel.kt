@@ -74,19 +74,16 @@ class HomeViewModel @Inject constructor(
                 unit = "mg",
                 color = 0xFF6200EE.toInt()
             )
-            val pillId = pillRepository.savePill(pill)
-            
-            // Schedule for 1 minute from now
             val now = LocalDateTime.now().plusMinutes(1)
             val schedule = ScheduleEntity(
-                pillId = pillId,
+                pillId = 0L,
                 type = ScheduleType.FIXED_TIME,
                 pattern = RecurrencePattern.DAILY,
                 timeMinutes = now.hour * 60 + now.minute,
-                reminderAdvanceMinutes = 0, // Trigger immediately at the time
+                reminderAdvanceMinutes = 0,
                 isCritical = true
             )
-            pillRepository.saveSchedule(schedule)
+            val pillId = pillRepository.savePillWithSchedule(pill, schedule)
             scheduleManager.refreshAlarmsForPill(pill.copy(id = pillId))
         }
     }

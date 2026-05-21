@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material3.*
@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeScreen(
     onAddPillClick: () -> Unit,
+    onEditPillClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -68,7 +69,8 @@ fun HomeScreen(
                 DoseTimelineSection(
                     entries = timeline,
                     onTaken = { viewModel.markAsTaken(it) },
-                    onSkip = { viewModel.markAsSkipped(it) }
+                    onSkip = { viewModel.markAsSkipped(it) },
+                    onEdit = onEditPillClick
                 )
             }
         }
@@ -79,7 +81,8 @@ fun HomeScreen(
 fun DoseTimelineSection(
     entries: List<TimelineEntry>,
     onTaken: (TimelineEntry) -> Unit,
-    onSkip: (TimelineEntry) -> Unit
+    onSkip: (TimelineEntry) -> Unit,
+    onEdit: (Long) -> Unit
 ) {
     Column {
         Text(
@@ -110,7 +113,8 @@ fun DoseTimelineSection(
                     TimelineCard(
                         entry = entry,
                         onTaken = { onTaken(entry) },
-                        onSkip = { onSkip(entry) }
+                        onSkip = { onSkip(entry) },
+                        onEdit = { onEdit(entry.pill.id) }
                     )
                 }
             }
@@ -122,7 +126,8 @@ fun DoseTimelineSection(
 fun TimelineCard(
     entry: TimelineEntry,
     onTaken: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
     
@@ -132,43 +137,58 @@ fun TimelineCard(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.dueTime.format(timeFormatter),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = entry.pill.name, style = MaterialTheme.typography.titleLarge)
-                Text(
-                    text = "${entry.pill.dosage} ${entry.pill.unit}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            // Actions
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalIconButton(onClick = onSkip) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = "Skip",
-                        modifier = Modifier.size(20.dp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = entry.dueTime.format(timeFormatter),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = entry.pill.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "${entry.pill.dosage} ${entry.pill.unit}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                FilledIconButton(onClick = onTaken) {
+                
+                IconButton(onClick = onEdit) {
                     Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Taken",
-                        modifier = Modifier.size(20.dp)
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Pill",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = onSkip,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Skip")
+                }
+                Button(
+                    onClick = onTaken,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Taken")
                 }
             }
         }
@@ -205,3 +225,9 @@ fun EmptyState(onAddPillClick: () -> Unit) {
     }
 }
 
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    HomeScreen(onAddPillClick = {}, onEditPillClick = {})
+}
