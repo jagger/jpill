@@ -6,6 +6,8 @@ import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import kotlinx.coroutines.flow.Flow
 
+import com.jagger.timer.core.data.model.DoseLogWithPill
+
 @Dao
 interface PillDao {
     @Query("SELECT * FROM pills")
@@ -28,6 +30,10 @@ interface PillDao {
     suspend fun insertSchedule(schedule: ScheduleEntity): Long
 
     // Dose Log Queries
+    @Transaction
+    @Query("SELECT * FROM dose_logs ORDER BY timestamp DESC")
+    fun getLogsWithPillInfo(): Flow<List<DoseLogWithPill>>
+
     @Query("SELECT * FROM dose_logs WHERE pillId = :pillId ORDER BY timestamp DESC")
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>>
 

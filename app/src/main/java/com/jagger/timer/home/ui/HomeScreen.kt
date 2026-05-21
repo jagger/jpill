@@ -48,6 +48,7 @@ import java.time.format.DateTimeFormatter
 fun HomeScreen(
     onAddPillClick: () -> Unit,
     onEditPillClick: (Long) -> Unit,
+    onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -57,7 +58,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("JaggerNauTimer", fontWeight = FontWeight.Bold) }
+                title = { Text("JaggerNauTimer", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(onClick = onHistoryClick) {
+                        Icon(Icons.Default.History, contentDescription = "History")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -261,5 +267,5 @@ fun EmptyState(onAddPillClick: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
-    HomeScreen(onAddPillClick = {}, onEditPillClick = {})
+    HomeScreen(onAddPillClick = {}, onEditPillClick = {}, onHistoryClick = {})
 }

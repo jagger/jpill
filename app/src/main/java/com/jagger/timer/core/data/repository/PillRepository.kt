@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.jagger.timer.core.data.model.DoseLogWithPill
+
 @Singleton
 class PillRepository @Inject constructor(
     private val pillDao: PillDao
@@ -24,6 +26,8 @@ class PillRepository @Inject constructor(
         pillDao.getSchedulesForPill(pillId)
 
     suspend fun saveSchedule(schedule: ScheduleEntity): Long = pillDao.insertSchedule(schedule)
+
+    fun getLogsWithPillInfo(): Flow<List<DoseLogWithPill>> = pillDao.getLogsWithPillInfo()
 
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>> = pillDao.getLogsForPill(pillId)
 
