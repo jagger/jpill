@@ -12,10 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.jagger.timer.add_pill.ui.AddPillScreen
+import androidx.navigation.navArgument
+import com.jagger.timer.add_pill.ui.PillFormScreen
 import com.jagger.timer.home.ui.HomeScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -40,11 +42,20 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
                         HomeScreen(
-                            onAddPillClick = { navController.navigate("add_pill") }
+                            onAddPillClick = { navController.navigate("pill_form") },
+                            onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") }
                         )
                     }
-                    composable("add_pill") {
-                        AddPillScreen(
+                    composable(
+                        route = "pill_form?pillId={pillId}",
+                        arguments = listOf(
+                            navArgument("pillId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            }
+                        )
+                    ) {
+                        PillFormScreen(
                             onNavigateBack = { navController.popBackStack() }
                         )
                     }

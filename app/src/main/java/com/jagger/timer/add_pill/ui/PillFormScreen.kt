@@ -48,14 +48,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.jagger.timer.add_pill.viewmodel.AddPillViewModel
+import com.jagger.timer.add_pill.viewmodel.PillFormViewModel
 import com.jagger.timer.core.data.local.entity.ScheduleType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPillScreen(
+fun PillFormScreen(
     onNavigateBack: () -> Unit,
-    viewModel: AddPillViewModel = hiltViewModel()
+    viewModel: PillFormViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showTimePicker by remember { mutableStateOf(false) }
@@ -81,7 +81,7 @@ fun AddPillScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add New Pill") },
+                title = { Text(if (uiState.pillId == null) "Add New Pill" else "Edit Pill") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -224,7 +224,7 @@ fun AddPillScreen(
                 if (uiState.isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Save Medication")
+                    Text(if (uiState.pillId == null) "Save Medication" else "Update Medication")
                 }
             }
         }
@@ -276,4 +276,3 @@ fun formatTime(totalMinutes: Int): String {
     }
     return "%d:%02d %s".format(displayHours, minutes, ampm)
 }
-
