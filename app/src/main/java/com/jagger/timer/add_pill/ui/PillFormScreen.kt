@@ -219,9 +219,9 @@ fun PillFormScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = uiState.name.isNotBlank() && !uiState.isSaving
+                enabled = uiState.name.isNotBlank() && !uiState.isSaving && !uiState.isLoading
             ) {
-                if (uiState.isSaving) {
+                if (uiState.isSaving || uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
                     Text(if (uiState.pillId == null) "Save Medication" else "Update Medication")

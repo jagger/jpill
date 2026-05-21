@@ -23,12 +23,15 @@ data class PillFormUiState(
     val name: String = "",
     val dosage: String = "",
     val unit: String = "mg",
+    val color: Int = 0xFF6200EE.toInt(),
+    val icon: String? = null,
     val scheduleType: ScheduleType = ScheduleType.FIXED_TIME,
     val recurrencePattern: RecurrencePattern = RecurrencePattern.DAILY,
-    val timeMinutes: Int = 480, // 8:00 AM
-    val intervalMinutes: Int = 480, // 8 hours
+    val timeMinutes: Int = 480,
+    val intervalMinutes: Int = 480,
     val timeSlotName: String = "Morning",
-    val selectedDays: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7), // 1=Mon, 7=Sun
+    val selectedDays: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7),
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val existingScheduleId: Long? = null
@@ -52,25 +55,35 @@ class PillFormViewModel @Inject constructor(
     }
 
     private fun loadPill(id: Long) {
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val pill = pillRepository.getPillById(id) ?: return@launch
-            val schedules = pillRepository.getSchedulesForPill(id).first()
-            val schedule = schedules.firstOrNull() ?: return@launch
+            val pill = pillRepository.getPillById(id)
+            val schedules = pill?.let { pillRepository.getSchedulesForPill(it.id).first() }
+            val schedule = schedules?.firstOrNull()
 
-            _uiState.update {
-                it.copy(
-                    pillId = pill.id,
-                    name = pill.name,
-                    dosage = pill.dosage,
-                    unit = pill.unit,
-                    scheduleType = schedule.type,
-                    recurrencePattern = schedule.pattern,
-                    timeMinutes = schedule.timeMinutes ?: 480,
-                    intervalMinutes = schedule.intervalMinutes ?: 480,
-                    timeSlotName = schedule.timeSlotName ?: "Morning",
-                    selectedDays = schedule.daysOfWeek?.split(",")?.mapNotNull { d -> d.toIntOrNull() } ?: listOf(1, 2, 3, 4, 5, 6, 7),
-                    existingScheduleId = schedule.id
-                )
+            if (pill != null && schedule != null) {
+                _uiState.update {
+                    it.copy(
+                        pillId = pill.id,
+                        name = pill.name,
+                        dosage = pill.dosage,
+                        unit = pill.unit,
+                        color = pill.color,
+                        icon = pill.icon,
+                        scheduleType = schedule.type,
+                        recurrencePattern = schedule.pattern,
+                        timeMinutes = schedule.timeMinutes ?: 480,
+                        intervalMinutes = schedule.intervalMinutes ?: 480,
+                        timeSlotName = schedule.timeSlotName ?: "Morning",
+                        selectedDays = schedule.daysOfWeek?.split(",")
+                            ?.mapNotNull { d -> d.toIntOrNull() }
+                            ?: listOf(1, 2, 3, 4, 5, 6, 7),
+                        existingScheduleId = schedule.id,
+                        isLoading = false
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -84,29 +97,22 @@ class PillFormViewModel @Inject constructor(
 
     fun savePill() {
         val state = _uiState.value
-        if (state.name.isBlank()) return
+        if (state.name.isBlank() || state.isLoading || state.isSaving) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            
+
             val pill = PillEntity(
                 id = state.pillId ?: 0L,
                 name = state.name,
                 dosage = state.dosage,
                 unit = state.unit,
-                color = 0xFF6200EE.toInt() // Default color
+                color = state.color,
+                icon = state.icon
             )
-            
-            // If editing, cancel existing alarms first
-            if (state.pillId != null) {
-                scheduleManager.cancelAlarmsForPill(pill)
-            }
-
-            val pillId = pillRepository.savePill(pill)
-
             val schedule = ScheduleEntity(
                 id = state.existingScheduleId ?: 0L,
-                pillId = pillId,
+                pillId = state.pillId ?: 0L,
                 type = state.scheduleType,
                 pattern = if (state.scheduleType == ScheduleType.FIXED_TIME) state.recurrencePattern else RecurrencePattern.DAILY,
                 timeMinutes = if (state.scheduleType == ScheduleType.FIXED_TIME) state.timeMinutes else null,
@@ -114,9 +120,16 @@ class PillFormViewModel @Inject constructor(
                 timeSlotName = if (state.scheduleType == ScheduleType.TIME_SLOT) state.timeSlotName else null,
                 daysOfWeek = if (state.recurrencePattern == RecurrencePattern.WEEKLY) state.selectedDays.joinToString(",") else null
             )
-            pillRepository.saveSchedule(schedule)
-            scheduleManager.refreshAlarmsForPill(pill.copy(id = pillId))
 
+            // Cancel before atomic DB write so we don't leave stale alarms on failure
+            if (state.pillId != null) {
+                scheduleManager.cancelAlarmsForPill(pill)
+            }
+
+            // Atomic: pill + schedule written in a single @Transaction
+            val savedPillId = pillRepository.savePillWithSchedule(pill, schedule)
+
+            scheduleManager.refreshAlarmsForPill(pill.copy(id = savedPillId))
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }
