@@ -15,6 +15,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.jagger.timer.MainActivity
 import com.jagger.timer.core.receiver.AlarmReceiver
+import com.jagger.timer.core.receiver.safeNotificationId
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -45,7 +46,7 @@ class PillReminderService : Service() {
             stopSelf()
         }
         
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -75,8 +76,9 @@ class PillReminderService : Service() {
             putExtra(AlarmReceiver.EXTRA_PILL_ID, pillId)
             putExtra(AlarmReceiver.EXTRA_SCHEDULE_ID, scheduleId)
         }
+        val notifId = safeNotificationId(pillId)
         val takenPendingIntent = PendingIntent.getBroadcast(
-            this, pillId.toInt() * 10 + 1, takenIntent,
+            this, notifId * 10 + 1, takenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -87,7 +89,7 @@ class PillReminderService : Service() {
             putExtra(AlarmReceiver.EXTRA_SCHEDULE_ID, scheduleId)
         }
         val skipPendingIntent = PendingIntent.getBroadcast(
-            this, pillId.toInt() * 10 + 2, skipIntent,
+            this, notifId * 10 + 2, skipIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -98,7 +100,7 @@ class PillReminderService : Service() {
             putExtra(AlarmReceiver.EXTRA_SCHEDULE_ID, scheduleId)
         }
         val snoozePendingIntent = PendingIntent.getBroadcast(
-            this, pillId.toInt() * 10 + 3, snoozeIntent,
+            this, notifId * 10 + 3, snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -107,7 +109,7 @@ class PillReminderService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
-            this, pillId.toInt(), fullScreenIntent,
+            this, notifId, fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -127,8 +129,8 @@ class PillReminderService : Service() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
-                pillId.toInt(), 
-                notification, 
+                notifId,
+                notification,
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
                 } else {
@@ -136,7 +138,7 @@ class PillReminderService : Service() {
                 }
             )
         } else {
-            startForeground(pillId.toInt(), notification)
+            startForeground(notifId, notification)
         }
     }
 }
