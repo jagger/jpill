@@ -19,6 +19,13 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
+import com.jagger.timer.core.data.local.entity.TimerType
+import com.jagger.timer.core.data.repository.TimerRepository
+import com.jagger.timer.core.util.TimerAlarmScheduler
+
 @AndroidEntryPoint
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -27,9 +34,12 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_TAKEN = "com.jagger.timer.ACTION_TAKEN"
         const val ACTION_SKIPPED = "com.jagger.timer.ACTION_SKIPPED"
         const val ACTION_SNOOZE = "com.jagger.timer.ACTION_SNOOZE"
+        const val ACTION_TIMER_FIRED = "com.jagger.timer.ACTION_TIMER_FIRED"
 
         const val EXTRA_PILL_ID = "PILL_ID"
         const val EXTRA_SCHEDULE_ID = "SCHEDULE_ID"
+        const val EXTRA_TIMER_ID = "TIMER_ID"
+        const val EXTRA_TIMER_NAME = "TIMER_NAME"
     }
 
     @Inject
@@ -41,17 +51,25 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject
     lateinit var alarmScheduler: AlarmScheduler
 
+    @Inject
+    lateinit var timerRepository: TimerRepository
+
+    @Inject
+    lateinit var timerAlarmScheduler: TimerAlarmScheduler
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
         val pillId = intent.getLongExtra(EXTRA_PILL_ID, -1L)
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, -1L)
+        val timerId = intent.getLongExtra(EXTRA_TIMER_ID, -1L)
         
         when (action) {
             Intent.ACTION_BOOT_COMPLETED -> {
                 scope.launch {
                     scheduleManager.refreshAlarms()
+                    // TODO: also refresh active timers
                 }
             }
             ACTION_PILL_REMINDER -> {
@@ -66,7 +84,43 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_SNOOZE -> {
                 handleSnoozeAction(context, pillId, scheduleId)
             }
+            ACTION_TIMER_FIRED -> {
+                handleTimerFired(context, timerId, intent.getStringExtra(EXTRA_TIMER_NAME))
+            }
         }
+    }
+
+    private fun handleTimerFired(context: Context, timerId: Long, timerName: String?) {
+        showTimerNotification(context, timerId, timerName ?: "Timer")
+        
+        scope.launch {
+            val timer = timerRepository.getTimerById(timerId) ?: return@launch
+            if (timer.type == TimerType.REPEATING && timer.isActive) {
+                timerAlarmScheduler.scheduleTimer(timer)
+            } else {
+                timerRepository.updateTimer(timer.copy(isActive = false))
+            }
+        }
+    }
+
+    private fun showTimerNotification(context: Context, timerId: Long, name: String) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "timers"
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Timers", NotificationManager.IMPORTANCE_HIGH)
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Timer Finished")
+            .setContentText("Your timer '$name' is done!")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(timerId.toInt() + 20000, notification)
     }
 
     private fun handleDoseAction(context: Context, pillId: Long, scheduleId: Long, status: DoseStatus) {
