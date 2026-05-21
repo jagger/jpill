@@ -23,6 +23,8 @@ data class PillFormUiState(
     val name: String = "",
     val dosage: String = "",
     val unit: String = "mg",
+    val color: Int = 0xFF6200EE.toInt(), // Default color
+    val icon: String = "Medication",
     val scheduleType: ScheduleType = ScheduleType.FIXED_TIME,
     val recurrencePattern: RecurrencePattern = RecurrencePattern.DAILY,
     val timeMinutes: Int = 480, // 8:00 AM
@@ -63,6 +65,8 @@ class PillFormViewModel @Inject constructor(
                     name = pill.name,
                     dosage = pill.dosage,
                     unit = pill.unit,
+                    color = pill.color,
+                    icon = pill.icon ?: "Medication",
                     scheduleType = schedule.type,
                     recurrencePattern = schedule.pattern,
                     timeMinutes = schedule.timeMinutes ?: 480,
@@ -77,6 +81,9 @@ class PillFormViewModel @Inject constructor(
 
     fun updateName(name: String) = _uiState.update { it.copy(name = name) }
     fun updateDosage(dosage: String) = _uiState.update { it.copy(dosage = dosage) }
+    fun updateUnit(unit: String) = _uiState.update { it.copy(unit = unit) }
+    fun updateColor(color: Int) = _uiState.update { it.copy(color = color) }
+    fun updateIcon(icon: String) = _uiState.update { it.copy(icon = icon) }
     fun updateScheduleType(type: ScheduleType) = _uiState.update { it.copy(scheduleType = type) }
     fun updateTime(hour: Int, minute: Int) = _uiState.update { it.copy(timeMinutes = hour * 60 + minute) }
     fun updateInterval(hours: Int) = _uiState.update { it.copy(intervalMinutes = hours * 60) }
@@ -94,7 +101,8 @@ class PillFormViewModel @Inject constructor(
                 name = state.name,
                 dosage = state.dosage,
                 unit = state.unit,
-                color = 0xFF6200EE.toInt() // Default color
+                color = state.color,
+                icon = state.icon
             )
             
             // If editing, cancel existing alarms first

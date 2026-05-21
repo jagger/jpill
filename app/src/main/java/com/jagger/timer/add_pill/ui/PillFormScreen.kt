@@ -1,8 +1,12 @@
 package com.jagger.timer.add_pill.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,10 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -22,12 +30,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -46,10 +56,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jagger.timer.add_pill.viewmodel.PillFormViewModel
 import com.jagger.timer.core.data.local.entity.ScheduleType
+import com.jagger.timer.core.util.PillIconMapper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +74,13 @@ fun PillFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showTimePicker by remember { mutableStateOf(false) }
+
+    val colorPresets = listOf(
+        Color(0xFF6200EE), Color(0xFF03DAC6), Color(0xFFF44336), 
+        Color(0xFF2196F3), Color(0xFF4CAF50), Color(0xFFFFEB3B), 
+        Color(0xFFFF9800), Color(0xFF9C27B0), Color(0xFFE91E63),
+        Color(0xFF795548), Color(0xFF607D8B), Color(0xFF000000)
+    )
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -99,8 +121,9 @@ fun PillFormScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Pill Details Section
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Pill Details", style = MaterialTheme.typography.titleMedium)
+                
                 OutlinedTextField(
                     value = uiState.name,
                     onValueChange = { viewModel.updateName(it) },
@@ -117,14 +140,101 @@ fun PillFormScreen(
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
-                    OutlinedTextField(
-                        value = uiState.unit,
-                        onValueChange = { },
-                        label = { Text("Unit") },
-                        modifier = Modifier.weight(1f),
-                        readOnly = true,
-                        singleLine = true
-                    )
+                    
+                    var unitExpanded by remember { mutableStateOf(false) }
+                    val units = listOf("mg", "ml", "pill", "IU", "mcg", "other")
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = uiState.unit,
+                            onValueChange = { },
+                            label = { Text("Unit") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded)
+                            },
+                            singleLine = true
+                        )
+                        Box(modifier = Modifier
+                            .matchParentSize()
+                            .clickable { unitExpanded = true })
+                        
+                        DropdownMenu(
+                            expanded = unitExpanded,
+                            onDismissRequest = { unitExpanded = false }
+                        ) {
+                            units.forEach { unit ->
+                                DropdownMenuItem(
+                                    text = { Text(unit) },
+                                    onClick = {
+                                        viewModel.updateUnit(unit)
+                                        unitExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(PillIconMapper.availableIcons) { iconName ->
+                        val isSelected = uiState.icon == iconName
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    width = if (isSelected) 2.dp else 0.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable { viewModel.updateIcon(iconName) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PillIconMapper.getIcon(iconName),
+                                contentDescription = iconName,
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Text("Color", style = MaterialTheme.typography.labelLarge)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(colorPresets) { color ->
+                        val isSelected = uiState.color == color.toArgb()
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(
+                                    width = if (isSelected) 2.dp else 0.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape
+                                )
+                                .clickable { viewModel.updateColor(color.toArgb()) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = if (color.luminance() > 0.5f) Color.Black else Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
