@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-23
+
 ### Added
 - **Prescriptions.** Search ~120 curated prescriptions by generic or brand name (Lipitor, Zoloft, ...). A pick fills the name, strength chips, food/timing notes and a typical schedule. It never fills a dose or limits: those come from your prescriber.
 - Bundled offline name list (from the openFDA NDC directory, public domain) fills gaps beyond the curated list.
@@ -12,8 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Tablets per dose (strength x tablets, e.g. 2 x 500 mg) for every pill; dose log and cooldown totals use the full amount.
 - Food and timing notes (preset chips plus free text); prescriber, pharmacy and Rx number fields.
 - Weekly schedules: "Certain days" with a weekday picker.
-- Room schema export, with instrumented tests for the v2 -> v3 migration and the atomic supply decrement.
-
+- Room schema export, with instrumented tests for the migrations (v2 to v3, v3 to v4, v2 to v4), the atomic supply decrement, delete and archive.
 - **Archive a medication.** The Edit screen has an "Archive (keeps history)" button. An archived medication disappears from the home screen and all its reminders stop (schedule alarms, "available again" and refill alarms, notifications already showing), but its schedule, supply and full dose history are kept. A new **Archived** screen (button appears in the top bar when something is archived) lists archived medications with doses taken and last taken date, and lets you **Restore** (reminders re-arm) or **Delete** permanently.
 - Refill reminders escalate: one "refill soon" when supply is low and one "you're out of ..." when it runs out, each once per low spell.
 
@@ -23,6 +24,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ### Changed
 - Database upgraded to version 4 (non-destructive migrations: prescriptions in v3, archiving in v4).
 - The "Common Medicines" search now covers prescriptions and the name list as well as OTC.
+
+### Notes
+- **Internal use only for now.** The prescription catalog (`RxCatalog`) and the remaining OTC values (naproxen, antihistamines, famotidine, guaifenesin, dextromethorphan) are typical-adult values written from general knowledge and have not been reviewed against current labels. A review page exists for doing that before any wider release. Prescriptions never get a dose or limits from the app; those always come from the prescriber's label.
+- The bundled name list (826 drugs) comes from the openFDA NDC directory (public domain); see `docs/DATASETS.md`.
 
 ## [0.1.0] - 2026-11-23
 
@@ -59,7 +64,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jagger/jpill/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jagger/jpill/compare/v0.0.3...v0.1.0
 [0.0.3]: https://github.com/jagger/jpill/compare/v0.0.1...v0.0.3
 [0.0.1]: https://github.com/jagger/jpill/releases/tag/v0.0.1
