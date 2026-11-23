@@ -27,6 +27,9 @@ App name: jPill (launcher label: jPill)
 ./gradlew testDebugUnitTest --tests "com.jagger.timer.MyTest#myMethod"  # run single test
 ```
 
+If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
+`JAVA_HOME=~/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2 ./gradlew assembleDebug`.
+
 ## Architecture
 
 MVVM with Android Architecture Components:
@@ -45,10 +48,11 @@ app/src/main/java/com/jagger/timer/
     ui/           HomeScreen.kt          — timeline view, FAB, empty state
     viewmodel/    HomeViewModel.kt
   add_pill/
-    ui/           AddPillScreen.kt       — form + TimePicker dialog
-    viewmodel/    AddPillViewModel.kt
+    ui/           PillFormScreen.kt      — add/edit form: common-medicine search, as-needed toggle + dose limits, schedule, TimePicker
+    viewmodel/    PillFormViewModel.kt
   core/
     data/
+      catalog/    OtcCatalog             — static list of common OTC meds (generic + brand names, label limits)
       local/
         entity/   PillEntity, ScheduleEntity, DoseLogEntity, DoseStatus, ScheduleType, RecurrencePattern
         dao/      PillDao
@@ -58,15 +62,17 @@ app/src/main/java/com/jagger/timer/
     di/           DatabaseModule
     receiver/     AlarmReceiver (BOOT_COMPLETED + pill alarm action)
     service/      PillReminderService (foreground, specialUse type)
-    util/         AlarmScheduler, ScheduleCalculator, ScheduleManager
-  MainActivity.kt                        — NavHost: "home" → "add_pill"
+    util/         AlarmScheduler, ScheduleCalculator, ScheduleManager, CooldownCalculator, DurationFormat
+  MainActivity.kt                        — NavHost: "home" → "pill_form?pillId={pillId}"
   TimerApplication.kt
 ```
 
 ## Data Model
 
 ### PillEntity (`pills` table)
-`id`, `name`, `dosage`, `unit`, `color` (ARGB Int), `icon` (nullable resource name)
+`id`, `name`, `dosage`, `unit`, `color` (ARGB Int), `icon` (nullable resource name), plus as-needed fields:
+`asNeeded`, `minIntervalMinutes` (wait between doses), `maxPer24h` (rolling 24h cap), `maxIsDoses` (cap counts doses, else total amount in `unit`), `catalogId` (OtcCatalog entry it came from).
+As-needed pills have **no** `ScheduleEntity` and no schedule alarms. `PillEntity.doseAmount()` parses `dosage` to a number.
 
 ### ScheduleEntity (`schedules` table)
 Foreign key → `PillEntity`. Fields:
@@ -80,7 +86,7 @@ Foreign key → `PillEntity`. Fields:
 - `reminderAdvanceMinutes` (default 30), `isCritical` (default true)
 
 ### DoseLogEntity (`dose_logs` table)
-`pillId`, `scheduleId` (nullable), `timestamp`, `status` (`TAKEN` | `SKIPPED` | `MISSED`), `note`
+`pillId`, `scheduleId` (nullable; null for as-needed doses), `timestamp`, `status` (`TAKEN` | `SKIPPED` | `MISSED`), `note`, `amount` (dose in the pill's unit when logged; null on pre-v2 logs, which fall back to the pill's current dose)
 
 ### TimelineEntry (`core/data/model/`)
 In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: LocalDateTime`. Used to drive the home screen timeline.
@@ -93,6 +99,15 @@ In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: 
   - `refreshAlarms()` / `refreshAlarmsForPill()` — (re)schedule AlarmManager alarms; call after any pill/schedule/dose change and on boot
   - `getUpcomingDoses(hours: Long = 24)` — returns sorted `List<TimelineEntry>` for the next N hours; used by `HomeViewModel.timeline`
 - `AlarmReceiver` — handles `BOOT_COMPLETED` (refreshes all alarms) and `ACTION_PILL_REMINDER` (starts `PillReminderService`)
+
+## As-Needed (OTC) Medicines
+
+For medicines taken when needed (ibuprofen, acetaminophen, ...), not on a schedule.
+- `OtcCatalog` holds adult OTC label defaults; the form's "Common Medicines" search matches generic or brand names (Advil, Tylenol, Aleve, ...) and pre-fills the pill. Values are informational and user-editable; the UI shows a "check your label" disclaimer. Re-verify against current labels before changing.
+- `CooldownCalculator` (pure) turns a pill + TAKEN logs + `now` into `CooldownState` (`READY` | `WAITING` | `AT_DAILY_MAX`, next-dose time, 24h totals). `forPill()` is the entry point used by both the UI and alarms.
+- Home screen "As Needed" cards show a minute-precision countdown, the 24h total vs. max, and **Take now**. Taking early asks for confirmation instead of blocking.
+- `HomeViewModel.asNeeded` combines pills + logs + a 5s ticker. `AsNeededItem` carries `nowMillis` on purpose: without it StateFlow de-dupes equal states and the countdown stops redrawing.
+- When a wait ends, `ScheduleManager.refreshCooldownAlarm` has `AlarmScheduler` set a one-shot `setExactAndAllowWhileIdle` alarm (`ACTION_COOLDOWN_DONE`, request code = pill id). `AlarmReceiver` re-checks the cooldown and posts a normal-priority "available again" notification on the `dose_available` channel. Refreshed after Take now, on save, and on boot; cancelled on delete.
 
 ## Notifications / Foreground Service
 
@@ -121,22 +136,21 @@ Required permissions declared in manifest:
 ## What's Built vs What's Next
 
 ### Done
-- Room DB with pills, schedules, dose logs
+- Room DB (v2) with pills, schedules, dose logs; `Migration(1, 2)` adds as-needed fields and `dose_logs.amount`
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
-- AlarmManager-based exact alarm scheduling
-- Foreground service notification with full-screen intent
-- Boot-completed alarm restoration
-- Add Pill screen: name/dosage/unit fields, schedule type picker (Fixed/Slot/Interval), Material3 `TimePicker` dialog
-- Home screen: upcoming dose timeline (next 24h), `TimelineCard` with Taken/Skip actions, FAB → Add Pill, empty state
-- `markAsTaken` / `markAsSkipped` write `DoseLogEntity` and refresh alarms
-- Navigation: `NavHost` with `"home"` and `"add_pill"` string routes
+- AlarmManager-based exact alarm scheduling, boot-completed restoration
+- Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification
+- Add / edit pill form with Material3 `TimePicker`; schedule type picker (Fixed/Slot/Interval)
+- Home screen: upcoming dose timeline (next 24h) with Taken/Skip, FAB, empty state
+- As-needed OTC medicines: catalog search, dose limits, live cooldown countdown, Take now with early-dose confirm, "available again" notification
+- Unit tests for `CooldownCalculator`, `OtcCatalog` search, `formatCountdown`
 
 ### Not yet built
-- "Taken" / "Skip" action from the notification itself (currently notification opens MainActivity but doesn't log)
-- Edit existing pill / schedule
 - Dose history / log screen
 - General-purpose (non-pill) timers
-- Weekly recurrence day-picker in Add Pill UI (`selectedDays` is in `AddPillUiState` but not exposed in the form)
-- Settings / configurable time slot defaults
+- Weekly recurrence day-picker in the pill form (`selectedDays` is in `PillFormUiState` but not exposed)
+- Settings (time slot defaults, toggle for the "available again" notification)
 - Proper Material3 color theme (currently bare `MaterialTheme` wrapper)
 - Unit tests for `ScheduleCalculator`
+- Instrumented test for the v1 -> v2 migration (`exportSchema` is off; migration only verified by matching Room's generated SQL)
+- Verify the remaining OTC label values in `OtcCatalog` (naproxen, antihistamines, famotidine, guaifenesin, dextromethorphan)

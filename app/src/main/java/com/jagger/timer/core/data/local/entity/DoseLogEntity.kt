@@ -24,7 +24,9 @@ data class DoseLogEntity(
     val scheduleId: Long? = null, // Link to schedule if it was a scheduled dose
     val timestamp: Long,          // When it was taken/skipped
     val status: DoseStatus,
-    val note: String? = null
+    val note: String? = null,
+    /** Amount taken, in the pill's unit at the time of logging. Null for logs from before v2. */
+    val amount: Double? = null
 )
 
 enum class DoseStatus {

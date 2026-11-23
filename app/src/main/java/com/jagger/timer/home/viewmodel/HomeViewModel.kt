@@ -5,12 +5,20 @@ import androidx.lifecycle.viewModelScope
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.DoseStatus
 import com.jagger.timer.core.data.local.entity.PillEntity
+import com.jagger.timer.core.data.local.entity.doseAmount
 import com.jagger.timer.core.data.local.entity.RecurrencePattern
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import com.jagger.timer.core.data.local.entity.ScheduleType
 import com.jagger.timer.core.data.model.TimelineEntry
 import com.jagger.timer.core.data.repository.PillRepository
+import com.jagger.timer.core.util.CooldownCalculator
+import com.jagger.timer.core.util.CooldownState
 import com.jagger.timer.core.util.ScheduleManager
+import com.jagger.timer.core.util.TakenDose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +29,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
+
+/** An as-needed pill with its live cooldown state. */
+/**
+ * An as-needed pill with its cooldown at [nowMillis]. [nowMillis] is part of the value on purpose:
+ * without it, equal states are de-duplicated by StateFlow and the countdown text never redraws.
+ */
+data class AsNeededItem(val pill: PillEntity, val cooldown: CooldownState, val nowMillis: Long)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -40,13 +55,55 @@ class HomeViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val ticker: Flow<Long> = flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            delay(5000) // countdown shows whole minutes; this also bounds how late a card flips to Ready
+        }
+    }
+
+    /** As-needed pills with a countdown that ticks every second while the screen is visible. */
+    val asNeeded: StateFlow<List<AsNeededItem>> = pillRepository.getAsNeededPills()
+        .flatMapLatest { pills ->
+            if (pills.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                // Fixed lower bound is a superset of the rolling 24h window; the calculator trims it.
+                val since = System.currentTimeMillis() - CooldownCalculator.WINDOW_MILLIS
+                val logFlows = pills.map { pillRepository.getTakenLogsSince(it.id, since) }
+                combine(combine(logFlows) { it.toList() }, ticker) { logsPerPill, now ->
+                    pills.zip(logsPerPill).map { (pill, logs) ->
+                        AsNeededItem(pill, CooldownCalculator.forPill(pill, logs, now), now)
+                    }
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Logs an as-needed dose as taken right now. */
+    fun takeNow(pill: PillEntity) {
+        viewModelScope.launch {
+            pillRepository.logDose(
+                DoseLogEntity(
+                    pillId = pill.id,
+                    scheduleId = null,
+                    timestamp = System.currentTimeMillis(),
+                    status = DoseStatus.TAKEN,
+                    amount = pill.doseAmount()
+                )
+            )
+            scheduleManager.refreshAlarmsForPill(pill)
+        }
+    }
+
     fun markAsTaken(entry: TimelineEntry) {
         viewModelScope.launch {
             val log = DoseLogEntity(
                 pillId = entry.pill.id,
                 scheduleId = entry.schedule.id,
                 timestamp = System.currentTimeMillis(),
-                status = DoseStatus.TAKEN
+                status = DoseStatus.TAKEN,
+                amount = entry.pill.doseAmount()
             )
             pillRepository.logDose(log)
             scheduleManager.refreshAlarmsForPill(entry.pill)
@@ -59,7 +116,8 @@ class HomeViewModel @Inject constructor(
                 pillId = entry.pill.id,
                 scheduleId = entry.schedule.id,
                 timestamp = System.currentTimeMillis(),
-                status = DoseStatus.SKIPPED
+                status = DoseStatus.SKIPPED,
+                amount = entry.pill.doseAmount()
             )
             pillRepository.logDose(log)
             scheduleManager.refreshAlarmsForPill(entry.pill)

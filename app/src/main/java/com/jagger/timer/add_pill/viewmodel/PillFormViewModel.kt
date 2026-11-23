@@ -34,7 +34,12 @@ data class PillFormUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
-    val existingScheduleId: Long? = null
+    val existingScheduleId: Long? = null,
+    val asNeeded: Boolean = false,
+    val minIntervalMinutes: Int? = null,
+    val maxPer24h: Int? = null,
+    val maxIsDoses: Boolean = false,
+    val catalogId: String? = null
 )
 
 @HiltViewModel
@@ -61,7 +66,7 @@ class PillFormViewModel @Inject constructor(
             val schedules = pill?.let { pillRepository.getSchedulesForPill(it.id).first() }
             val schedule = schedules?.firstOrNull()
 
-            if (pill != null && schedule != null) {
+            if (pill != null && (schedule != null || pill.asNeeded)) {
                 _uiState.update {
                     it.copy(
                         pillId = pill.id,
@@ -70,15 +75,20 @@ class PillFormViewModel @Inject constructor(
                         unit = pill.unit,
                         color = pill.color,
                         icon = pill.icon,
-                        scheduleType = schedule.type,
-                        recurrencePattern = schedule.pattern,
-                        timeMinutes = schedule.timeMinutes ?: 480,
-                        intervalMinutes = schedule.intervalMinutes ?: 480,
-                        timeSlotName = schedule.timeSlotName ?: "Morning",
-                        selectedDays = schedule.daysOfWeek?.split(",")
+                        asNeeded = pill.asNeeded,
+                        minIntervalMinutes = pill.minIntervalMinutes,
+                        maxPer24h = pill.maxPer24h,
+                        maxIsDoses = pill.maxIsDoses,
+                        catalogId = pill.catalogId,
+                        scheduleType = schedule?.type ?: it.scheduleType,
+                        recurrencePattern = schedule?.pattern ?: it.recurrencePattern,
+                        timeMinutes = schedule?.timeMinutes ?: 480,
+                        intervalMinutes = schedule?.intervalMinutes ?: 480,
+                        timeSlotName = schedule?.timeSlotName ?: "Morning",
+                        selectedDays = schedule?.daysOfWeek?.split(",")
                             ?.mapNotNull { d -> d.toIntOrNull() }
                             ?: listOf(1, 2, 3, 4, 5, 6, 7),
-                        existingScheduleId = schedule.id,
+                        existingScheduleId = schedule?.id,
                         isLoading = false
                     )
                 }
@@ -89,6 +99,22 @@ class PillFormViewModel @Inject constructor(
     }
 
     fun updateName(name: String) = _uiState.update { it.copy(name = name) }
+    fun updateAsNeeded(asNeeded: Boolean) = _uiState.update { it.copy(asNeeded = asNeeded) }
+    fun updateMinInterval(minutes: Int?) = _uiState.update { it.copy(minIntervalMinutes = minutes) }
+    fun updateMaxPer24h(max: Int?, isDoses: Boolean) =
+        _uiState.update { it.copy(maxPer24h = max, maxIsDoses = isDoses) }
+    fun applyCatalogMed(med: com.jagger.timer.core.data.catalog.OtcMed) = _uiState.update {
+        it.copy(
+            name = med.genericName,
+            dosage = med.defaultDose,
+            unit = med.unit,
+            asNeeded = true,
+            minIntervalMinutes = med.minIntervalMinutes,
+            maxPer24h = med.maxPer24h,
+            maxIsDoses = med.maxIsDoses,
+            catalogId = med.id
+        )
+    }
     fun updateDosage(dosage: String) = _uiState.update { it.copy(dosage = dosage) }
     fun updateScheduleType(type: ScheduleType) = _uiState.update { it.copy(scheduleType = type) }
     fun updateTime(hour: Int, minute: Int) = _uiState.update { it.copy(timeMinutes = hour * 60 + minute) }
@@ -108,8 +134,23 @@ class PillFormViewModel @Inject constructor(
                 dosage = state.dosage,
                 unit = state.unit,
                 color = state.color,
-                icon = state.icon
+                icon = state.icon,
+                asNeeded = state.asNeeded,
+                minIntervalMinutes = if (state.asNeeded) state.minIntervalMinutes else null,
+                maxPer24h = if (state.asNeeded) state.maxPer24h else null,
+                maxIsDoses = state.asNeeded && state.maxIsDoses,
+                catalogId = state.catalogId
             )
+
+            if (state.asNeeded) {
+                // Cancel any alarms from a previous scheduled version before its schedules are removed
+                if (state.pillId != null) scheduleManager.cancelAlarmsForPill(pill)
+                val savedId = pillRepository.saveAsNeededPill(pill)
+                scheduleManager.refreshAlarmsForPill(pill.copy(id = savedId))
+                _uiState.update { it.copy(isSaving = false, isSaved = true) }
+                return@launch
+            }
+
             val schedule = ScheduleEntity(
                 id = state.existingScheduleId ?: 0L,
                 pillId = state.pillId ?: 0L,

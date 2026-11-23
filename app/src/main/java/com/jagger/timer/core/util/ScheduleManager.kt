@@ -5,6 +5,7 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import com.jagger.timer.core.data.model.TimelineEntry
 import com.jagger.timer.core.data.repository.PillRepository
 import kotlinx.coroutines.flow.first
+import java.time.Instant
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,7 +51,25 @@ class ScheduleManager @Inject constructor(
         }
     }
 
+    /** (Re)schedules the "available again" alarm for an as-needed pill, or cancels it if already ready. */
+    suspend fun refreshCooldownAlarm(pill: PillEntity) {
+        if (!pill.asNeeded) {
+            alarmScheduler.cancelCooldownAlarm(pill.id)
+            return
+        }
+        val now = System.currentTimeMillis()
+        val logs = pillRepository.getTakenLogsSince(pill.id, now - CooldownCalculator.WINDOW_MILLIS).first()
+        val cooldown = CooldownCalculator.forPill(pill, logs, now)
+        val next = cooldown.nextDoseAtMillis
+        if (cooldown.status == CooldownStatus.READY || next == null) {
+            alarmScheduler.cancelCooldownAlarm(pill.id)
+        } else {
+            alarmScheduler.scheduleCooldownAlarm(pill.id, next)
+        }
+    }
+
     suspend fun refreshAlarmsForPill(pill: PillEntity) {
+        if (pill.asNeeded) refreshCooldownAlarm(pill)
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
         val logs = pillRepository.getLogsForPill(pill.id).first()
         val lastDoseTimestamp = logs.firstOrNull()?.timestamp
@@ -72,6 +91,7 @@ class ScheduleManager @Inject constructor(
     }
 
     suspend fun cancelAlarmsForPill(pill: PillEntity) {
+        alarmScheduler.cancelCooldownAlarm(pill.id)
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
         for (schedule in schedules) {
             alarmScheduler.cancelAlarm(schedule)

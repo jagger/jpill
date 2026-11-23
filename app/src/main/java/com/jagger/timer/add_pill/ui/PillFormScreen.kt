@@ -49,7 +49,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jagger.timer.add_pill.viewmodel.PillFormViewModel
+import com.jagger.timer.core.data.catalog.OtcCatalog
 import com.jagger.timer.core.data.local.entity.ScheduleType
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +67,9 @@ fun PillFormScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showTimePicker by remember { mutableStateOf(false) }
+    // As-needed pills with an amount cap need a numeric dose so the daily total is right.
+    val dosageInvalid = uiState.asNeeded && uiState.maxPer24h != null && !uiState.maxIsDoses &&
+        uiState.dosage.trim().toDoubleOrNull() == null
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -98,6 +109,11 @@ fun PillFormScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Common medicines picker (new pills only)
+            if (uiState.pillId == null) {
+                CommonMedicinePicker(onPick = { viewModel.applyCatalogMed(it) })
+            }
+
             // Pill Details Section
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Pill Details", style = MaterialTheme.typography.titleMedium)
@@ -115,7 +131,10 @@ fun PillFormScreen(
                         onValueChange = { viewModel.updateDosage(it) },
                         label = { Text("Dosage") },
                         modifier = Modifier.weight(1f),
-                        singleLine = true
+                        singleLine = true,
+                        isError = dosageInvalid,
+                        supportingText = if (dosageInvalid) {{ Text("Use a number, e.g. 200") }} else null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                     OutlinedTextField(
                         value = uiState.unit,
@@ -128,8 +147,41 @@ fun PillFormScreen(
                 }
             }
 
+            // As-needed toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Take as needed", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "No fixed schedule. Shows a countdown until your next dose is OK.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = uiState.asNeeded, onCheckedChange = { viewModel.updateAsNeeded(it) })
+            }
+
+            if (uiState.asNeeded) {
+                DoseLimitsSection(
+                    minIntervalMinutes = uiState.minIntervalMinutes,
+                    maxPer24h = uiState.maxPer24h,
+                    maxIsDoses = uiState.maxIsDoses,
+                    unit = uiState.unit,
+                    resetKey = "${uiState.pillId}-${uiState.catalogId}-${uiState.isLoading}",
+                    onMinInterval = { viewModel.updateMinInterval(it) },
+                    onMax = { max, isDoses -> viewModel.updateMaxPer24h(max, isDoses) }
+                )
+                Text(
+                    OtcCatalog.DISCLAIMER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             // Scheduling Section
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!uiState.asNeeded) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Schedule", style = MaterialTheme.typography.titleMedium)
                 
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -219,7 +271,7 @@ fun PillFormScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = uiState.name.isNotBlank() && !uiState.isSaving && !uiState.isLoading
+                enabled = uiState.name.isNotBlank() && !uiState.isSaving && !uiState.isLoading && !dosageInvalid
             ) {
                 if (uiState.isSaving || uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -229,6 +281,129 @@ fun PillFormScreen(
             }
         }
     }
+}
+
+@Composable
+private fun CommonMedicinePicker(onPick: (com.jagger.timer.core.data.catalog.OtcMed) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val results = remember(query) { if (query.isBlank()) emptyList() else OtcCatalog.search(query) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Common Medicines", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Search by name or brand (e.g. Advil)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        if (query.isNotBlank() && results.isEmpty()) {
+            Text(
+                "No match. Enter it manually below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        results.forEach { med ->
+            OutlinedCard(
+                onClick = { onPick(med); query = "" },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(med.genericName, style = MaterialTheme.typography.titleSmall)
+                    if (med.brandNames.isNotEmpty()) {
+                        Text(
+                            med.brandNames.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        "${med.defaultDose} ${med.unit}, wait ${formatHours(med.minIntervalMinutes)}, " +
+                            "max ${med.maxPer24h}${if (med.maxIsDoses) " doses" else " ${med.unit}"}/24h",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoseLimitsSection(
+    minIntervalMinutes: Int?,
+    maxPer24h: Int?,
+    maxIsDoses: Boolean,
+    unit: String,
+    resetKey: String,
+    onMinInterval: (Int?) -> Unit,
+    onMax: (Int?, Boolean) -> Unit
+) {
+    // Local text so edits aren't clobbered; reset when a medicine is picked/loaded.
+    var hoursText by remember(resetKey) {
+        mutableStateOf(minIntervalMinutes?.let { hoursToText(it) } ?: "")
+    }
+    var maxText by remember(resetKey) { mutableStateOf(maxPer24h?.toString() ?: "") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Dose Limits", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = hoursText,
+            onValueChange = { text ->
+                // Accept digits and one decimal separator ("." or ","); e.g. 4, 4.5, 0.02
+                val cleaned = text.replace(',', '.').filter { it.isDigit() || it == '.' }
+                val firstDot = cleaned.indexOf('.')
+                val normalized = if (firstDot < 0) cleaned
+                    else cleaned.substring(0, firstDot + 1) + cleaned.substring(firstDot + 1).replace(".", "")
+                hoursText = normalized.take(8)
+                onMinInterval(
+                    hoursText.toDoubleOrNull()?.let { h -> Math.round(h * 60).toInt() }?.takeIf { m -> m > 0 }
+                )
+            },
+            label = { Text("Minimum wait between doses (hours)") },
+            supportingText = {
+                minIntervalMinutes?.let { Text("= ${formatHours(it)}") }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        )
+        OutlinedTextField(
+            value = maxText,
+            onValueChange = {
+                maxText = it
+                onMax(it.toIntOrNull()?.takeIf { v -> v > 0 }, maxIsDoses)
+            },
+            label = { Text("Maximum per 24 hours") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = !maxIsDoses,
+                onClick = { onMax(maxPer24h, false) },
+                label = { Text("Total $unit") }
+            )
+            FilterChip(
+                selected = maxIsDoses,
+                onClick = { onMax(maxPer24h, true) },
+                label = { Text("Number of doses") }
+            )
+        }
+    }
+}
+
+/** Minutes as an hours string for the text field: 240 -> "4", 270 -> "4.5", 1 -> "0.0167". */
+private fun hoursToText(minutes: Int): String {
+    val h = minutes / 60.0
+    return if (minutes % 60 == 0) (minutes / 60).toString() else "%.2f".format(java.util.Locale.US, h).trimEnd('0').trimEnd('.')
+}
+
+private fun formatHours(minutes: Int): String = when {
+    minutes < 60 -> "$minutes min"
+    minutes % 60 == 0 -> "${minutes / 60} h"
+    else -> "${minutes / 60} h ${minutes % 60} min"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

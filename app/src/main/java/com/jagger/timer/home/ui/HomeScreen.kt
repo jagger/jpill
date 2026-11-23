@@ -23,6 +23,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.jagger.timer.core.data.catalog.OtcCatalog
+import com.jagger.timer.core.util.CooldownStatus
+import com.jagger.timer.core.util.formatCountdown
+import com.jagger.timer.home.viewmodel.AsNeededItem
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,6 +53,8 @@ fun HomeScreen(
 ) {
     val pills by viewModel.pills.collectAsState()
     val timeline by viewModel.timeline.collectAsState()
+    val asNeeded by viewModel.asNeeded.collectAsState()
+    var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -66,8 +76,14 @@ fun HomeScreen(
             if (timeline.isEmpty() && pills.isEmpty()) {
                 EmptyState(onAddPillClick)
             } else {
-                DoseTimelineSection(
+                HomeContent(
+                    asNeeded = asNeeded,
+                    hasScheduledPills = pills.size > asNeeded.size,
                     entries = timeline,
+                    onTakeNow = { item ->
+                        if (item.cooldown.status == CooldownStatus.READY) viewModel.takeNow(item.pill)
+                        else confirmEarly = item
+                    },
                     onTaken = { viewModel.markAsTaken(it) },
                     onSkip = { viewModel.markAsSkipped(it) },
                     onEdit = onEditPillClick
@@ -75,48 +91,182 @@ fun HomeScreen(
             }
         }
     }
+
+    confirmEarly?.let { item ->
+        val cd = item.cooldown
+        val reason = when (cd.status) {
+            CooldownStatus.AT_DAILY_MAX -> "You've reached the 24-hour maximum for ${item.pill.name}."
+            else -> "It's been less than the recommended wait since your last dose of ${item.pill.name}."
+        }
+        AlertDialog(
+            onDismissRequest = { confirmEarly = null },
+            title = { Text("Take it early?") },
+            text = {
+                Text(
+                    "$reason Next dose is due in ${formatCountdown(cd.millisUntilNext(item.nowMillis))}. " +
+                        "Check your label or ask a pharmacist before taking more."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.takeNow(item.pill); confirmEarly = null }) {
+                    Text("Log it anyway")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEarly = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable
-fun DoseTimelineSection(
+fun HomeContent(
+    asNeeded: List<AsNeededItem>,
+    hasScheduledPills: Boolean,
     entries: List<TimelineEntry>,
+    onTakeNow: (AsNeededItem) -> Unit,
     onTaken: (TimelineEntry) -> Unit,
     onSkip: (TimelineEntry) -> Unit,
     onEdit: (Long) -> Unit
 ) {
-    Column {
-        Text(
-            text = "Upcoming Doses",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        
-        if (entries.isEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Text(
-                    text = "All caught up! No doses scheduled for the next 24 hours.",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
+    ) {
+        if (asNeeded.isNotEmpty()) {
+            item(key = "as_needed_header") { SectionHeader("As Needed") }
+            items(asNeeded, key = { "as_needed_${it.pill.id}" }) { item ->
+                AsNeededCard(
+                    item = item,
+                    onTakeNow = { onTakeNow(item) },
+                    onEdit = { onEdit(item.pill.id) }
                 )
             }
+            item(key = "as_needed_disclaimer") {
+                Text(
+                    text = OtcCatalog.DISCLAIMER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        if (entries.isNotEmpty() || hasScheduledPills) {
+            item(key = "upcoming_header") { SectionHeader("Upcoming Doses") }
+        }
+        if (entries.isEmpty()) {
+            if (hasScheduledPills) {
+                item(key = "caught_up") {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Text(
+                            text = "All caught up! No doses scheduled for the next 24 hours.",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
-            ) {
-                items(entries) { entry ->
-                    TimelineCard(
-                        entry = entry,
-                        onTaken = { onTaken(entry) },
-                        onSkip = { onSkip(entry) },
-                        onEdit = { onEdit(entry.pill.id) }
+            items(entries) { entry ->
+                TimelineCard(
+                    entry = entry,
+                    onTaken = { onTaken(entry) },
+                    onSkip = { onSkip(entry) },
+                    onEdit = { onEdit(entry.pill.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+fun AsNeededCard(
+    item: AsNeededItem,
+    onTakeNow: () -> Unit,
+    onEdit: () -> Unit
+) {
+    val pill = item.pill
+    val cd = item.cooldown
+    val now = item.nowMillis
+    val ready = cd.status == CooldownStatus.READY
+
+    val statusText = when (cd.status) {
+        CooldownStatus.READY -> "Ready"
+        CooldownStatus.WAITING -> "Next dose in ${formatCountdown(cd.millisUntilNext(now))}"
+        CooldownStatus.AT_DAILY_MAX -> "Daily max reached. Next in ${formatCountdown(cd.millisUntilNext(now))}"
+    }
+    val usage = pill.maxPer24h?.let { max ->
+        if (pill.maxIsDoses) "${cd.dosesIn24h} of $max doses in last 24h"
+        else "${cd.amountIn24h.toInt()} of $max ${pill.unit} in last 24h"
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = pill.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "${pill.dosage} ${pill.unit}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Pill",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = when (cd.status) {
+                    CooldownStatus.READY -> MaterialTheme.colorScheme.primary
+                    CooldownStatus.WAITING -> MaterialTheme.colorScheme.onSurface
+                    CooldownStatus.AT_DAILY_MAX -> MaterialTheme.colorScheme.error
+                }
+            )
+            usage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            val buttonContent: @Composable () -> Unit = {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Take now")
+            }
+            if (ready) {
+                Button(onClick = onTakeNow, modifier = Modifier.fillMaxWidth(), content = { buttonContent() })
+            } else {
+                FilledTonalButton(onClick = onTakeNow, modifier = Modifier.fillMaxWidth(), content = { buttonContent() })
             }
         }
     }

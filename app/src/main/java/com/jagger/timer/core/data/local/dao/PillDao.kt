@@ -23,6 +23,22 @@ interface PillDao {
     @Delete
     suspend fun deletePill(pill: PillEntity)
 
+    @Query("SELECT * FROM pills WHERE asNeeded = 1")
+    fun getAsNeededPills(): Flow<List<PillEntity>>
+
+    /** Atomically saves an as-needed pill and removes any schedules it previously had. */
+    @Transaction
+    suspend fun saveAsNeededPill(pill: PillEntity): Long {
+        val id = if (pill.id == 0L) {
+            insertPill(pill)
+        } else {
+            updatePill(pill)
+            pill.id
+        }
+        deleteSchedulesForPill(id)
+        return id
+    }
+
     // Schedule Queries
     @Query("SELECT * FROM schedules WHERE pillId = :pillId")
     fun getSchedulesForPill(pillId: Long): Flow<List<ScheduleEntity>>
@@ -32,6 +48,9 @@ interface PillDao {
 
     @Update
     suspend fun updateSchedule(schedule: ScheduleEntity)
+
+    @Query("DELETE FROM schedules WHERE pillId = :pillId")
+    suspend fun deleteSchedulesForPill(pillId: Long)
 
     @Transaction
     suspend fun savePillWithSchedule(pill: PillEntity, schedule: ScheduleEntity): Long {
@@ -49,6 +68,9 @@ interface PillDao {
     // Dose Log Queries
     @Query("SELECT * FROM dose_logs WHERE pillId = :pillId ORDER BY timestamp DESC")
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>>
+
+    @Query("SELECT * FROM dose_logs WHERE pillId = :pillId AND status = 'TAKEN' AND timestamp > :sinceMillis ORDER BY timestamp DESC")
+    fun getTakenLogsSince(pillId: Long, sinceMillis: Long): Flow<List<DoseLogEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDoseLog(log: DoseLogEntity): Long
