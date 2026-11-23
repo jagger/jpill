@@ -2,14 +2,23 @@ package com.jagger.timer.core.data.local.dao
 
 import androidx.room.*
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
+import com.jagger.timer.core.data.local.entity.DoseStatus
+import com.jagger.timer.core.util.SupplyCalculator
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PillDao {
-    @Query("SELECT * FROM pills")
+    /** Active (non-archived) pills: what the home screen, alarms and boot restore work with. */
+    @Query("SELECT * FROM pills WHERE isArchived = 0")
     fun getAllPills(): Flow<List<PillEntity>>
+
+    @Query("SELECT * FROM pills WHERE isArchived = 1 ORDER BY archivedAt DESC")
+    fun getArchivedPills(): Flow<List<PillEntity>>
+
+    @Query("UPDATE pills SET isArchived = :archived, archivedAt = :at WHERE id = :pillId")
+    suspend fun setArchived(pillId: Long, archived: Boolean, at: Long?)
 
     @Query("SELECT * FROM pills WHERE id = :id")
     suspend fun getPillById(id: Long): PillEntity?
@@ -23,7 +32,7 @@ interface PillDao {
     @Delete
     suspend fun deletePill(pill: PillEntity)
 
-    @Query("SELECT * FROM pills WHERE asNeeded = 1")
+    @Query("SELECT * FROM pills WHERE asNeeded = 1 AND isArchived = 0")
     fun getAsNeededPills(): Flow<List<PillEntity>>
 
     /** Atomically saves an as-needed pill and removes any schedules it previously had. */
@@ -66,6 +75,26 @@ interface PillDao {
     }
 
     // Dose Log Queries
+    @Query("UPDATE pills SET supplyCount = :supply WHERE id = :pillId")
+    suspend fun updateSupply(pillId: Long, supply: Double?)
+
+    /**
+     * Inserts a dose log and, for a TAKEN dose on a pill that tracks supply, subtracts
+     * `tabletsPerDose` from `supplyCount` (floored at 0) in the same transaction.
+     */
+    @Transaction
+    suspend fun logDoseAndAdjustSupply(log: DoseLogEntity): Long {
+        val id = insertDoseLog(log)
+        if (log.status == DoseStatus.TAKEN) {
+            val pill = getPillById(log.pillId)
+            val supply = pill?.supplyCount
+            if (pill != null && supply != null) {
+                updateSupply(pill.id, SupplyCalculator.afterDose(supply, pill.tabletsPerDose))
+            }
+        }
+        return id
+    }
+
     @Query("SELECT * FROM dose_logs WHERE pillId = :pillId ORDER BY timestamp DESC")
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>>
 

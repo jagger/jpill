@@ -15,13 +15,35 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
         ScheduleEntity::class,
         DoseLogEntity::class
     ],
-    version = 2,
-    exportSchema = false
+    version = 4,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun pillDao(): PillDao
 
     companion object {
+        /** v3 -> v4: archiving (hide a pill and stop reminders without deleting its history). */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pills ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pills ADD COLUMN archivedAt INTEGER")
+            }
+        }
+
+        /** v2 -> v3: prescriptions (tablets per dose, supply/refills, notes, prescriber details). */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pills ADD COLUMN isPrescription INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pills ADD COLUMN tabletsPerDose REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE pills ADD COLUMN supplyCount REAL")
+                db.execSQL("ALTER TABLE pills ADD COLUMN refillThresholdDays INTEGER NOT NULL DEFAULT 7")
+                db.execSQL("ALTER TABLE pills ADD COLUMN instructions TEXT")
+                db.execSQL("ALTER TABLE pills ADD COLUMN prescriber TEXT")
+                db.execSQL("ALTER TABLE pills ADD COLUMN pharmacy TEXT")
+                db.execSQL("ALTER TABLE pills ADD COLUMN rxNumber TEXT")
+            }
+        }
+
         /** v1 -> v2: as-needed pills with cooldown settings, and per-dose amounts in the log. Existing rows keep working. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {

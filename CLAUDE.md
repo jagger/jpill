@@ -59,7 +59,9 @@ app/src/main/java/com/jagger/timer/
     viewmodel/    PillFormViewModel.kt
   core/
     data/
-      catalog/    OtcCatalog             — static list of common OTC meds (generic + brand names, label limits)
+      catalog/    OtcCatalog, RxCatalog  — curated OTC (label limits) and prescription (names, strengths, typical frequency, notes; never doses) lists
+                  DrugDataset            — bundled openFDA name list (assets/drugs.csv) parser + lazy loader
+                  CatalogSearch          — one search: curated Rx, then OTC, then dataset (deduped by ingredient)
       local/
         entity/   PillEntity, ScheduleEntity, DoseLogEntity, DoseStatus, ScheduleType, RecurrencePattern
         dao/      PillDao
@@ -69,7 +71,8 @@ app/src/main/java/com/jagger/timer/
     di/           DatabaseModule
     receiver/     AlarmReceiver (BOOT_COMPLETED + pill alarm action)
     service/      PillReminderService (foreground, specialUse type)
-    util/         AlarmScheduler, ScheduleCalculator, ScheduleManager, CooldownCalculator, DurationFormat
+    util/         AlarmScheduler, ScheduleCalculator, ScheduleManager, CooldownCalculator, SupplyCalculator,
+                  RxFormLogic (+RefillPlanner), RefillState, DurationFormat
   MainActivity.kt                        — NavHost: "home" → "pill_form?pillId={pillId}"
   TimerApplication.kt
 ```
@@ -79,7 +82,8 @@ app/src/main/java/com/jagger/timer/
 ### PillEntity (`pills` table)
 `id`, `name`, `dosage`, `unit`, `color` (ARGB Int), `icon` (nullable resource name), plus as-needed fields:
 `asNeeded`, `minIntervalMinutes` (wait between doses), `maxPer24h` (rolling 24h cap), `maxIsDoses` (cap counts doses, else total amount in `unit`), `catalogId` (OtcCatalog entry it came from).
-As-needed pills have **no** `ScheduleEntity` and no schedule alarms. `PillEntity.doseAmount()` parses `dosage` to a number.
+As-needed pills have **no** `ScheduleEntity` and no schedule alarms. `PillEntity.doseAmount()` = strength (`dosage`) x `tabletsPerDose`.
+Prescription fields (DB v3): `isPrescription`, `tabletsPerDose` (`dosage` is the strength of ONE tablet), `supplyCount` (null = not tracked), `refillThresholdDays` (default 7), `instructions` (food/timing), `prescriber`, `pharmacy`, `rxNumber`.
 
 ### ScheduleEntity (`schedules` table)
 Foreign key → `PillEntity`. Fields:
@@ -106,6 +110,22 @@ In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: 
   - `refreshAlarms()` / `refreshAlarmsForPill()` — (re)schedule AlarmManager alarms; call after any pill/schedule/dose change and on boot
   - `getUpcomingDoses(hours: Long = 24)` — returns sorted `List<TimelineEntry>` for the next N hours; used by `HomeViewModel.timeline`
 - `AlarmReceiver` — handles `BOOT_COMPLETED` (refreshes all alarms) and `ACTION_PILL_REMINDER` (starts `PillReminderService`)
+
+## Prescriptions
+
+- Picking a prescription in the form search applies names, strength chips, notes and a *typical schedule* from `RxFrequency.scheduleDefaults()` (once daily -> Morning slot, BID -> every 12 h, weekly -> Monday 08:00, "as needed" -> cooldown with blank limits). It never fills a dose, daily max or minimum interval: those are the prescriber's.
+- `RxCatalog` data is typical-adult and **unverified**: review against DailyMed before relying on it. A test guarantees `RxMed` has no dose/limit fields.
+- Supply: `PillDao.logDoseAndAdjustSupply` inserts the log and subtracts `tabletsPerDose` (floor 0) in one transaction for TAKEN doses; `PillRepository.logDose` uses it, so every TAKEN path (home button, Take now, notification action) decrements. Skipped doses don't.
+- `SupplyCalculator` (pure): days left = supply / (tablets per dose x doses per day from schedules); status OK / LOW / EMPTY against `refillThresholdDays`.
+- Refill reminder: `ScheduleManager.refreshRefillAlarm(pillId)` re-reads the pill (callers may hold a pre-decrement copy) and `RefillPlanner` decides Cancel / FireNow / ScheduleAt. `AlarmReceiver.ACTION_REFILL_DUE` posts on the `refill_reminders` channel once per low spell; `RefillState` (SharedPreferences) remembers how far reminders escalated (level 1 low, level 2 out of pills; each fires once per low spell) and is cleared when supply is healthy again (e.g. after entering a refill in the edit form).
+- Bundled names: `tools/build_drug_dataset.py` builds `app/src/main/assets/drugs.csv` from the openFDA NDC directory (CC0, https://open.fda.gov/terms/). Names/strengths/ingredients only (826 rows, ~60 KB). Provenance, license, cleaning rules and known limits are in `docs/DATASETS.md`. Regenerate with `python3 tools/build_drug_dataset.py` (network, ~30 min); `--clean raw.csv out.csv` re-applies the cleaning offline.
+- DB encryption is deferred: biometric-gated keys can't be used by background alarms/notification actions, and Keystore keys don't survive backup restore.
+
+## Archive and Delete
+
+- **Archive** (`ScheduleManager.archivePill`): sets `isArchived`/`archivedAt` (DB v4), cancels schedule/cooldown/refill alarms and the pill's posted notifications. Schedules, supply and dose logs are kept. `PillDao.getAllPills()` and `getAsNeededPills()` exclude archived pills, so the home screen, alarms, boot restore and supply all ignore them. `restorePill` clears the flag and re-arms alarms. UI: Edit screen button; `archive/ui/ArchivedScreen` (Restore / Delete permanently), reached from the home top bar when `archivedCount > 0`.
+- **Delete** (`ScheduleManager.deletePill`): cancels alarms and notifications, clears `RefillState`, deletes the pill; FK cascade removes schedules and dose logs (history is gone, the dialog says so and suggests Archive).
+- Any future screen that lists history (M4) must include archived pills' logs.
 
 ## As-Needed (OTC) Medicines
 
@@ -143,21 +163,22 @@ Required permissions declared in manifest:
 ## What's Built vs What's Next
 
 ### Done
-- Room DB (v2) with pills, schedules, dose logs; `Migration(1, 2)` adds as-needed fields and `dose_logs.amount`
+- Room DB (v4) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
 - Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification
+- Delete medication: button + confirm on the Edit screen -> `ScheduleManager.deletePill` (cancels alarms and posted notifications, clears `RefillState`, DB cascades schedules and dose logs)
 - Add / edit pill form with Material3 `TimePicker`; schedule type picker (Fixed/Slot/Interval)
 - Home screen: upcoming dose timeline (next 24h) with Taken/Skip, FAB, empty state
 - As-needed OTC medicines: catalog search, dose limits, live cooldown countdown, Take now with early-dose confirm, "available again" notification
-- Unit tests for `CooldownCalculator`, `OtcCatalog` search, `formatCountdown`
+- Prescriptions (M2): Rx catalog + name list search, tablets per dose, supply tracking and refill reminder, food/timing notes, prescriber/pharmacy/Rx number, weekly day picker
+- Unit tests for `CooldownCalculator`, `SupplyCalculator`, `RxFormLogic`/`RefillPlanner`, catalogs and search, `formatCountdown`; instrumented tests for the v2 -> v3 migration and atomic supply decrement (run with `adb shell am instrument`, NOT `connectedAndroidTest`, which uninstalls the app and wipes its data)
 
 ### Not yet built
 - Dose history / log screen
 - General-purpose (non-pill) timers
-- Weekly recurrence day-picker in the pill form (`selectedDays` is in `PillFormUiState` but not exposed)
 - Settings (time slot defaults, toggle for the "available again" notification)
 - Proper Material3 color theme (currently bare `MaterialTheme` wrapper)
 - Unit tests for `ScheduleCalculator`
-- Instrumented test for the v1 -> v2 migration (`exportSchema` is off; migration only verified by matching Room's generated SQL)
-- Verify the remaining OTC label values in `OtcCatalog` (naproxen, antihistamines, famotidine, guaifenesin, dextromethorphan)
+- Instrumented test for the v1 -> v2 migration (no `1.json` schema snapshot; v2 -> v3 is covered)
+- Verify the remaining OTC label values in `OtcCatalog` (naproxen, antihistamines, famotidine, guaifenesin, dextromethorphan) and the whole `RxCatalog` against current labels

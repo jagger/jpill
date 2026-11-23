@@ -7,7 +7,7 @@ plugins {
 }
 
 // Single source of truth for the app version (SemVer). Bump here, add a CHANGELOG.md entry, tag vX.Y.Z.
-val appVersion = "0.1.0"
+val appVersion = "0.2.0"
 
 android {
     namespace = "com.jagger.timer"
@@ -46,6 +46,12 @@ android {
     buildFeatures {
         compose = true
     }
+    // Exported Room schemas let MigrationTestHelper verify upgrades against real snapshots.
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -65,6 +71,7 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+    androidTestImplementation("androidx.room:room-testing:$roomVersion")
 
     // Hilt
     implementation(libs.hilt.android)

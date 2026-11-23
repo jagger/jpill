@@ -3,7 +3,16 @@ package com.jagger.timer.add_pill.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jagger.timer.core.data.catalog.CatalogResult
+import com.jagger.timer.core.data.catalog.CatalogSearch
+import com.jagger.timer.core.data.catalog.CatalogSource
+import com.jagger.timer.core.data.catalog.DrugDatasetSource
 import com.jagger.timer.core.data.local.entity.PillEntity
+import com.jagger.timer.core.util.RxFormLogic
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import com.jagger.timer.core.data.local.entity.RecurrencePattern
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import com.jagger.timer.core.data.local.entity.ScheduleType
@@ -34,20 +43,47 @@ data class PillFormUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+    val isDeleted: Boolean = false,
+    val isArchived: Boolean = false,
     val existingScheduleId: Long? = null,
     val asNeeded: Boolean = false,
     val minIntervalMinutes: Int? = null,
     val maxPer24h: Int? = null,
     val maxIsDoses: Boolean = false,
-    val catalogId: String? = null
+    val catalogId: String? = null,
+    // Prescription fields (text kept as typed; parsed on save)
+    val isPrescription: Boolean = false,
+    val tabletsText: String = "1",
+    val supplyText: String = "",
+    val refillDaysText: String = "7",
+    val instructions: String = "",
+    val prescriber: String = "",
+    val pharmacy: String = "",
+    val rxNumber: String = "",
+    /** Strengths suggested by the picked catalog entry, shown as chips. */
+    val strengthOptions: List<String> = emptyList()
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PillFormViewModel @Inject constructor(
     private val pillRepository: PillRepository,
     private val scheduleManager: ScheduleManager,
+    private val drugDataset: DrugDatasetSource,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    /** Curated Rx, then OTC, then bundled-dataset matches for the current search text. */
+    val searchResults: StateFlow<List<CatalogResult>> = _query
+        .mapLatest { q ->
+            if (q.isBlank()) emptyList() else CatalogSearch.search(q, drugDataset.records())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateQuery(q: String) { _query.value = q }
 
     private val _uiState = MutableStateFlow(PillFormUiState())
     val uiState: StateFlow<PillFormUiState> = _uiState.asStateFlow()
@@ -80,6 +116,14 @@ class PillFormViewModel @Inject constructor(
                         maxPer24h = pill.maxPer24h,
                         maxIsDoses = pill.maxIsDoses,
                         catalogId = pill.catalogId,
+                        isPrescription = pill.isPrescription,
+                        tabletsText = RxFormLogic.formatCount(pill.tabletsPerDose),
+                        supplyText = pill.supplyCount?.let { s -> RxFormLogic.formatCount(s) } ?: "",
+                        refillDaysText = pill.refillThresholdDays.toString(),
+                        instructions = pill.instructions.orEmpty(),
+                        prescriber = pill.prescriber.orEmpty(),
+                        pharmacy = pill.pharmacy.orEmpty(),
+                        rxNumber = pill.rxNumber.orEmpty(),
                         scheduleType = schedule?.type ?: it.scheduleType,
                         recurrencePattern = schedule?.pattern ?: it.recurrencePattern,
                         timeMinutes = schedule?.timeMinutes ?: 480,
@@ -116,10 +160,106 @@ class PillFormViewModel @Inject constructor(
         )
     }
     fun updateDosage(dosage: String) = _uiState.update { it.copy(dosage = dosage) }
+    fun updateIsPrescription(v: Boolean) = _uiState.update { it.copy(isPrescription = v) }
+    fun updateTablets(v: String) = _uiState.update { it.copy(tabletsText = v) }
+    fun updateSupply(v: String) = _uiState.update { it.copy(supplyText = v) }
+    fun updateRefillDays(v: String) = _uiState.update { it.copy(refillDaysText = v.filter { c -> c.isDigit() }.take(3)) }
+    fun updateInstructions(v: String) = _uiState.update { it.copy(instructions = v) }
+    fun addInstructionPreset(phrase: String) =
+        _uiState.update { it.copy(instructions = RxFormLogic.addInstruction(it.instructions, phrase)) }
+    fun updatePrescriber(v: String) = _uiState.update { it.copy(prescriber = v) }
+    fun updatePharmacy(v: String) = _uiState.update { it.copy(pharmacy = v) }
+    fun updateRxNumber(v: String) = _uiState.update { it.copy(rxNumber = v) }
+    fun updateRecurrence(pattern: RecurrencePattern) = _uiState.update { it.copy(recurrencePattern = pattern) }
+    fun toggleDay(day: Int) = _uiState.update {
+        val days = if (day in it.selectedDays) it.selectedDays - day else it.selectedDays + day
+        // Keep at least one day selected so a weekly schedule always has an occurrence.
+        it.copy(selectedDays = if (days.isEmpty()) it.selectedDays else days.sorted())
+    }
+
+    /** Picks a strength chip, e.g. "10 mg" -> dosage 10, unit mg. Combination strengths fill the dosage whole. */
+    fun applyStrength(strength: String) {
+        val (number, unit) = RxFormLogic.parseStrength(strength)
+        _uiState.update { it.copy(dosage = number, unit = unit ?: it.unit) }
+    }
+
+    /** Applies a search hit from any catalog. Prescriptions never get a dose or limits, only a typical schedule. */
+    fun applyCatalogResult(result: CatalogResult) {
+        _query.value = ""
+        when (result.source) {
+            CatalogSource.OTC -> {
+                result.otc?.let { applyCatalogMed(it) }
+                _uiState.update { it.copy(isPrescription = false, strengthOptions = emptyList()) }
+            }
+            CatalogSource.RX -> {
+                val rx = result.rx ?: return
+                val defaults = rx.frequency.scheduleDefaults()
+                _uiState.update {
+                    val base = it.copy(
+                        name = rx.genericName,
+                        catalogId = rx.id,
+                        isPrescription = true,
+                        instructions = rx.instructions ?: "",
+                        strengthOptions = rx.strengths,
+                        // Dose and limits are the prescriber's call: clear anything an earlier pick filled in.
+                        dosage = "",
+                        minIntervalMinutes = null,
+                        maxPer24h = null,
+                        maxIsDoses = false
+                    )
+                    if (defaults == null) {
+                        base.copy(asNeeded = true)
+                    } else {
+                        base.copy(
+                            asNeeded = false,
+                            scheduleType = defaults.type,
+                            recurrencePattern = defaults.pattern,
+                            timeMinutes = defaults.timeMinutes ?: it.timeMinutes,
+                            intervalMinutes = defaults.intervalMinutes ?: it.intervalMinutes,
+                            timeSlotName = defaults.timeSlotName ?: it.timeSlotName,
+                            selectedDays = defaults.daysOfWeek ?: listOf(1, 2, 3, 4, 5, 6, 7)
+                        )
+                    }
+                }
+            }
+            CatalogSource.DATASET -> _uiState.update {
+                it.copy(
+                    name = result.genericName,
+                    catalogId = null,
+                    isPrescription = true,
+                    strengthOptions = result.strengths,
+                    dosage = "",
+                    asNeeded = false
+                )
+            }
+        }
+    }
     fun updateScheduleType(type: ScheduleType) = _uiState.update { it.copy(scheduleType = type) }
     fun updateTime(hour: Int, minute: Int) = _uiState.update { it.copy(timeMinutes = hour * 60 + minute) }
     fun updateInterval(hours: Int) = _uiState.update { it.copy(intervalMinutes = hours * 60) }
     fun updateTimeSlot(slot: String) = _uiState.update { it.copy(timeSlotName = slot) }
+
+    /** Archives the pill being edited: hidden and silent, but history is kept. */
+    fun archivePill() {
+        val id = _uiState.value.pillId ?: return
+        if (_uiState.value.isSaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            pillRepository.getPillById(id)?.let { scheduleManager.archivePill(it) }
+            _uiState.update { it.copy(isSaving = false, isArchived = true) }
+        }
+    }
+
+    /** Deletes the pill being edited, with its alarms, notifications, schedules and dose history. */
+    fun deletePill() {
+        val id = _uiState.value.pillId ?: return
+        if (_uiState.value.isSaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            pillRepository.getPillById(id)?.let { scheduleManager.deletePill(it) }
+            _uiState.update { it.copy(isSaving = false, isDeleted = true) }
+        }
+    }
 
     fun savePill() {
         val state = _uiState.value
@@ -139,7 +279,15 @@ class PillFormViewModel @Inject constructor(
                 minIntervalMinutes = if (state.asNeeded) state.minIntervalMinutes else null,
                 maxPer24h = if (state.asNeeded) state.maxPer24h else null,
                 maxIsDoses = state.asNeeded && state.maxIsDoses,
-                catalogId = state.catalogId
+                catalogId = state.catalogId,
+                tabletsPerDose = RxFormLogic.parseTablets(state.tabletsText),
+                isPrescription = state.isPrescription,
+                supplyCount = if (state.isPrescription) RxFormLogic.parseSupply(state.supplyText) else null,
+                refillThresholdDays = RxFormLogic.parseRefillDays(state.refillDaysText),
+                instructions = state.instructions.trim().takeIf { state.isPrescription && it.isNotEmpty() },
+                prescriber = state.prescriber.trim().takeIf { state.isPrescription && it.isNotEmpty() },
+                pharmacy = state.pharmacy.trim().takeIf { state.isPrescription && it.isNotEmpty() },
+                rxNumber = state.rxNumber.trim().takeIf { state.isPrescription && it.isNotEmpty() }
             )
 
             if (state.asNeeded) {
