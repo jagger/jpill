@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Prescriptions.** Search ~120 curated prescriptions by generic or brand name (Lipitor, Zoloft, ...). A pick fills the name, strength chips, food/timing notes and a typical schedule. It never fills a dose or limits: those come from your prescriber.
+- Bundled offline name list (from the openFDA NDC directory, public domain) fills gaps beyond the curated list.
+- **Supply and refills:** tablets on hand drops with every taken dose (home button, Take now, or the notification), cards show "N left, about D days" and turn red when low, and a one-time refill reminder fires at a threshold you set (default 7 days).
+- Tablets per dose (strength x tablets, e.g. 2 x 500 mg) for every pill; dose log and cooldown totals use the full amount.
+- Food and timing notes (preset chips plus free text); prescriber, pharmacy and Rx number fields.
+- Weekly schedules: "Certain days" with a weekday picker.
+- Room schema export, with instrumented tests for the v2 -> v3 migration and the atomic supply decrement.
+
+### Changed
+- Database upgraded to version 3 (non-destructive migration).
+- The "Common Medicines" search now covers prescriptions and the name list as well as OTC.
+
 ## [0.1.0] - 2026-11-23
 
 ### Added
