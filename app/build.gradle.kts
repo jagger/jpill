@@ -6,6 +6,9 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Single source of truth for the app version (SemVer). Bump here, add a CHANGELOG.md entry, tag vX.Y.Z.
+val appVersion = "0.1.0"
+
 android {
     namespace = "com.jagger.timer"
     compileSdk = 35
@@ -14,8 +17,9 @@ android {
         applicationId = "com.jagger.timer"
         minSdk = 35
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // 0.1.0 -> 100, 1.2.3 -> 10203: always increases with the version
+        versionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+        versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -30,6 +30,13 @@ App name: jPill (launcher label: jPill)
 If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 `JAVA_HOME=~/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2 ./gradlew assembleDebug`.
 
+## Versioning & Releases
+
+- Version lives in one place: `val appVersion` at the top of `app/build.gradle.kts` (SemVer). `versionName` is that string; `versionCode` is derived (`major*10000 + minor*100 + patch`).
+- `CHANGELOG.md` follows Keep a Changelog. Add entries under `[Unreleased]` as you work.
+- To release: move `[Unreleased]` entries under a new `[X.Y.Z] - date` heading, bump `appVersion`, update the compare links, merge via PR, then tag the merge commit `vX.Y.Z` and push the tag.
+- Bump MINOR for features, PATCH for fixes. Any Room schema change needs a `Migration` (never destructive) and a changelog note.
+
 ## Architecture
 
 MVVM with Android Architecture Components:
