@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**JaggerNautTimer** — an Android medication and general-purpose timer app.  
+**jPill** — an Android medication and general-purpose timer app (formerly JaggerNauTimer).
 Package: `com.jagger.timer`  
-App name: JaggerNauTimer (launcher label: JaggerNaut)
+App name: jPill (launcher label: jPill)
 
 ## Target Platform
 

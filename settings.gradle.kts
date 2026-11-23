@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "JaggerNauTimer"
+rootProject.name = "jPill"
 include(":app")

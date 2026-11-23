@@ -49,7 +49,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("JaggerNauTimer", fontWeight = FontWeight.Bold) }
+                title = { Text("jPill", fontWeight = FontWeight.Bold) }
             )
         },
         floatingActionButton = {
