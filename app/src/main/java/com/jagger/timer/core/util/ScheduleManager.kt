@@ -113,6 +113,17 @@ class ScheduleManager @Inject constructor(
         }
     }
 
+    /**
+     * Deletes a pill and everything hanging off it: alarms, posted notifications and the refill flag.
+     * Its schedules and dose history are removed by the database (foreign-key cascade).
+     */
+    suspend fun deletePill(pill: PillEntity) {
+        cancelAlarmsForPill(pill)
+        alarmScheduler.cancelPillNotifications(pill.id)
+        refillState.clear(pill.id)
+        pillRepository.deletePill(pill)
+    }
+
     suspend fun cancelAlarmsForPill(pill: PillEntity) {
         alarmScheduler.cancelCooldownAlarm(pill.id)
         alarmScheduler.cancelRefillAlarm(pill.id)

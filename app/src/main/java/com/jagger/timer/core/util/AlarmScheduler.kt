@@ -7,6 +7,8 @@ import android.content.Intent
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import com.jagger.timer.core.receiver.AlarmReceiver
+import com.jagger.timer.core.receiver.safeNotificationId
+import android.app.NotificationManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -41,6 +43,15 @@ class AlarmScheduler @Inject constructor(
 
         val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerAtMillis, pendingIntent)
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+    }
+
+    /** Removes any notification this pill already posted (scheduled reminder, cooldown-done, refill). */
+    fun cancelPillNotifications(pillId: Long) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val base = safeNotificationId(pillId)
+        nm.cancel(base)               // scheduled reminder
+        nm.cancel(base or 0x40000000) // "available again"
+        nm.cancel(base or 0x20000000) // refill
     }
 
     /** One-shot alarm for "your wait is over" on an as-needed pill. Replaces any earlier one. */

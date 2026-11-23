@@ -173,8 +173,7 @@ class HomeViewModel @Inject constructor(
 
     fun deletePill(pill: PillEntity) {
         viewModelScope.launch {
-            scheduleManager.cancelAlarmsForPill(pill)
-            pillRepository.deletePill(pill)
+            scheduleManager.deletePill(pill)
         }
     }
 }

@@ -43,6 +43,7 @@ data class PillFormUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+    val isDeleted: Boolean = false,
     val existingScheduleId: Long? = null,
     val asNeeded: Boolean = false,
     val minIntervalMinutes: Int? = null,
@@ -236,6 +237,17 @@ class PillFormViewModel @Inject constructor(
     fun updateTime(hour: Int, minute: Int) = _uiState.update { it.copy(timeMinutes = hour * 60 + minute) }
     fun updateInterval(hours: Int) = _uiState.update { it.copy(intervalMinutes = hours * 60) }
     fun updateTimeSlot(slot: String) = _uiState.update { it.copy(timeSlotName = slot) }
+
+    /** Deletes the pill being edited, with its alarms, notifications, schedules and dose history. */
+    fun deletePill() {
+        val id = _uiState.value.pillId ?: return
+        if (_uiState.value.isSaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            pillRepository.getPillById(id)?.let { scheduleManager.deletePill(it) }
+            _uiState.update { it.copy(isSaving = false, isDeleted = true) }
+        }
+    }
 
     fun savePill() {
         val state = _uiState.value

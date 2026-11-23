@@ -8,6 +8,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.DoseStatus
 import com.jagger.timer.core.data.local.entity.PillEntity
+import com.jagger.timer.core.data.local.entity.RecurrencePattern
+import com.jagger.timer.core.data.local.entity.ScheduleEntity
+import com.jagger.timer.core.data.local.entity.ScheduleType
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -88,6 +92,27 @@ class PrescriptionDbTest {
         val low = dao.insertPill(PillEntity(name = "B", dosage = "1", unit = "mg", color = 0, supplyCount = 1.0, tabletsPerDose = 2.0))
         dao.logDoseAndAdjustSupply(DoseLogEntity(pillId = low, timestamp = 1, status = DoseStatus.TAKEN))
         assertEquals(0.0, dao.getPillById(low)!!.supplyCount!!, 0.0)
+        db.close()
+    }
+
+    @Test
+    fun deletingPill_removesItsSchedulesAndDoseHistory_andLeavesOthers() = runBlocking {
+        val db = memoryDb()
+        val dao = db.pillDao()
+        val doomed = dao.savePillWithSchedule(
+            PillEntity(name = "Doomed", dosage = "5", unit = "mg", color = 0, supplyCount = 10.0),
+            ScheduleEntity(pillId = 0, type = ScheduleType.FIXED_TIME, pattern = RecurrencePattern.DAILY, timeMinutes = 480)
+        )
+        val keeper = dao.insertPill(PillEntity(name = "Keeper", dosage = "1", unit = "mg", color = 0))
+        dao.logDoseAndAdjustSupply(DoseLogEntity(pillId = doomed, timestamp = 1, status = DoseStatus.TAKEN))
+        dao.logDoseAndAdjustSupply(DoseLogEntity(pillId = keeper, timestamp = 2, status = DoseStatus.TAKEN))
+
+        dao.deletePill(dao.getPillById(doomed)!!)
+
+        assertNull(dao.getPillById(doomed))
+        assertEquals(0, dao.getSchedulesForPill(doomed).first().size)
+        assertEquals(0, dao.getLogsForPill(doomed).first().size)
+        assertEquals(1, dao.getLogsForPill(keeper).first().size)
         db.close()
     }
 }

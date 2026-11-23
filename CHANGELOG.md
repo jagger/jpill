@@ -14,6 +14,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Weekly schedules: "Certain days" with a weekday picker.
 - Room schema export, with instrumented tests for the v2 -> v3 migration and the atomic supply decrement.
 
+### Fixed
+- **You can now delete a medication.** The Edit screen has a "Delete medication" button with a confirmation. Deleting also cancels its alarms and any reminder, "available again" or refill notification already showing, clears its refill flag, and removes its schedules and dose history. Before, the delete code existed but nothing in the app could trigger it.
+
 ### Changed
 - Database upgraded to version 3 (non-destructive migration).
 - The "Common Medicines" search now covers prescriptions and the name list as well as OTC.

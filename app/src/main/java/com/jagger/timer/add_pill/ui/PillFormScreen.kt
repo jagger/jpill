@@ -79,10 +79,31 @@ fun PillFormScreen(
     val dosageInvalid = uiState.asNeeded && uiState.maxPer24h != null && !uiState.maxIsDoses &&
         uiState.dosage.trim().toDoubleOrNull() == null
 
-    LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.isSaved, uiState.isDeleted) {
+        if (uiState.isSaved || uiState.isDeleted) {
             onNavigateBack()
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete ${uiState.name.ifBlank { "this medication" }}?") },
+            text = {
+                Text(
+                    "This removes the medication, its reminders and its dose history. This can't be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.deletePill()
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
     }
 
     if (showTimePicker) {
@@ -365,6 +386,19 @@ fun PillFormScreen(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
                     Text(if (uiState.pillId == null) "Save Medication" else "Update Medication")
+                }
+            }
+
+            if (uiState.pillId != null) {
+                OutlinedButton(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isSaving && !uiState.isLoading,
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete medication")
                 }
             }
         }

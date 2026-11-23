@@ -161,6 +161,7 @@ Required permissions declared in manifest:
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
 - Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification
+- Delete medication: button + confirm on the Edit screen -> `ScheduleManager.deletePill` (cancels alarms and posted notifications, clears `RefillState`, DB cascades schedules and dose logs)
 - Add / edit pill form with Material3 `TimePicker`; schedule type picker (Fixed/Slot/Interval)
 - Home screen: upcoming dose timeline (next 24h) with Taken/Skip, FAB, empty state
 - As-needed OTC medicines: catalog search, dose limits, live cooldown countdown, Take now with early-dose confirm, "available again" notification
