@@ -8,6 +8,10 @@ import com.jagger.timer.MainActivity
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.util.CooldownCalculator
 import com.jagger.timer.core.util.CooldownStatus
+import com.jagger.timer.core.util.RefillState
+import com.jagger.timer.core.util.SupplyCalculator
+import com.jagger.timer.core.util.SupplyStatus
+import com.jagger.timer.core.util.RxFormLogic
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -37,8 +41,10 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_SKIPPED = "com.jagger.timer.ACTION_SKIPPED"
         const val ACTION_SNOOZE = "com.jagger.timer.ACTION_SNOOZE"
         const val ACTION_COOLDOWN_DONE = "com.jagger.timer.ACTION_COOLDOWN_DONE"
+        const val ACTION_REFILL_DUE = "com.jagger.timer.ACTION_REFILL_DUE"
 
         const val COOLDOWN_CHANNEL_ID = "dose_available"
+        const val REFILL_CHANNEL_ID = "refill_reminders"
 
         const val EXTRA_PILL_ID = "PILL_ID"
         const val EXTRA_SCHEDULE_ID = "SCHEDULE_ID"
@@ -47,6 +53,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var scheduleManager: ScheduleManager
     @Inject lateinit var pillRepository: PillRepository
     @Inject lateinit var alarmScheduler: AlarmScheduler
+    @Inject lateinit var refillState: RefillState
 
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
@@ -69,6 +76,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_SKIPPED -> handleDoseAction(context, pillId, scheduleId, DoseStatus.SKIPPED)
             ACTION_SNOOZE -> handleSnoozeAction(context, pillId, scheduleId)
             ACTION_COOLDOWN_DONE -> handleCooldownDone(context, pillId)
+            ACTION_REFILL_DUE -> handleRefillDue(context, pillId)
         }
     }
 
@@ -117,6 +125,61 @@ class AlarmReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
+    }
+
+    /** Supply reached the refill threshold: remind once, then wait until supply is healthy again. */
+    private fun handleRefillDue(context: Context, pillId: Long) {
+        if (pillId == -1L) return
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                val pill = pillRepository.getPillById(pillId) ?: return@launch
+                val schedules = pillRepository.getSchedulesForPill(pillId).first()
+                val status = SupplyCalculator.status(pill, schedules)
+                if (pill.isPrescription && pill.supplyCount != null &&
+                    status != SupplyStatus.OK && !refillState.wasNotified(pillId)
+                ) {
+                    postRefillNotification(context, pill, SupplyCalculator.daysLeft(pill, schedules), status)
+                    refillState.setNotified(pillId)
+                } else {
+                    // Fired early or things changed (e.g. refill entered): re-plan.
+                    scheduleManager.refreshRefillAlarm(pillId)
+                }
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private fun postRefillNotification(context: Context, pill: PillEntity, daysLeft: Double?, status: SupplyStatus) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(REFILL_CHANNEL_ID, "Refill reminders", NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = "Tells you when a prescription is running low" }
+        )
+        val id = safeNotificationId(pill.id) or 0x20000000 // distinct from reminder and cooldown ids
+        val open = PendingIntent.getActivity(
+            context, id,
+            Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val supply = RxFormLogic.formatCount(pill.supplyCount ?: 0.0)
+        val (title, text) = if (status == SupplyStatus.EMPTY) {
+            "You're out of ${pill.name}" to "Time to get a refill."
+        } else {
+            val days = daysLeft?.let { "about ${Math.ceil(it).toInt()} days" } ?: "a few days"
+            "Refill ${pill.name} soon" to "$supply left, $days of supply. Contact your pharmacy."
+        }
+        val notification = NotificationCompat.Builder(context, REFILL_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        nm.notify(id, notification)
     }
 
     private fun postDoseAvailableNotification(context: Context, pill: PillEntity) {

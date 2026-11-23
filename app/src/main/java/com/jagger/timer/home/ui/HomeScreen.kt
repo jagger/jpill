@@ -31,6 +31,9 @@ import com.jagger.timer.core.data.catalog.OtcCatalog
 import com.jagger.timer.core.util.CooldownStatus
 import com.jagger.timer.core.util.formatCountdown
 import com.jagger.timer.home.viewmodel.AsNeededItem
+import com.jagger.timer.home.viewmodel.SupplyInfo
+import com.jagger.timer.core.util.RxFormLogic
+import com.jagger.timer.core.util.SupplyStatus
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,6 +57,7 @@ fun HomeScreen(
     val pills by viewModel.pills.collectAsState()
     val timeline by viewModel.timeline.collectAsState()
     val asNeeded by viewModel.asNeeded.collectAsState()
+    val supply by viewModel.supply.collectAsState()
     var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
 
     Scaffold(
@@ -79,6 +83,7 @@ fun HomeScreen(
                 HomeContent(
                     asNeeded = asNeeded,
                     hasScheduledPills = pills.size > asNeeded.size,
+                    supply = supply,
                     entries = timeline,
                     onTakeNow = { item ->
                         if (item.cooldown.status == CooldownStatus.READY) viewModel.takeNow(item.pill)
@@ -123,6 +128,7 @@ fun HomeScreen(
 fun HomeContent(
     asNeeded: List<AsNeededItem>,
     hasScheduledPills: Boolean,
+    supply: Map<Long, SupplyInfo>,
     entries: List<TimelineEntry>,
     onTakeNow: (AsNeededItem) -> Unit,
     onTaken: (TimelineEntry) -> Unit,
@@ -138,6 +144,7 @@ fun HomeContent(
             items(asNeeded, key = { "as_needed_${it.pill.id}" }) { item ->
                 AsNeededCard(
                     item = item,
+                    supply = supply[item.pill.id],
                     onTakeNow = { onTakeNow(item) },
                     onEdit = { onEdit(item.pill.id) }
                 )
@@ -176,12 +183,35 @@ fun HomeContent(
             items(entries) { entry ->
                 TimelineCard(
                     entry = entry,
+                    supply = supply[entry.pill.id],
                     onTaken = { onTaken(entry) },
                     onSkip = { onSkip(entry) },
                     onEdit = { onEdit(entry.pill.id) }
                 )
             }
         }
+    }
+}
+
+/** Food/timing note and supply line for prescriptions. Shows nothing for pills without either. */
+@Composable
+private fun RxInfoLines(instructions: String?, supply: SupplyInfo?) {
+    if (!instructions.isNullOrBlank()) {
+        Text(
+            text = instructions,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    if (supply != null) {
+        val left = RxFormLogic.formatCount(supply.supply)
+        val days = supply.daysLeft?.let { "about ${Math.ceil(it).toInt()} days" }
+        val (text, color) = when (supply.status) {
+            SupplyStatus.EMPTY -> "Out of pills. Time to refill" to MaterialTheme.colorScheme.error
+            SupplyStatus.LOW -> "Low: refill soon. $left left" + (days?.let { ", $it" } ?: "") to MaterialTheme.colorScheme.error
+            SupplyStatus.OK -> "$left left" + (days?.let { ", $it" } ?: "") to MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        Text(text = text, style = MaterialTheme.typography.bodySmall, color = color)
     }
 }
 
@@ -197,6 +227,7 @@ private fun SectionHeader(text: String) {
 @Composable
 fun AsNeededCard(
     item: AsNeededItem,
+    supply: SupplyInfo?,
     onTakeNow: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -226,10 +257,11 @@ fun AsNeededCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = pill.name, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = "${pill.dosage} ${pill.unit}",
+                        text = RxFormLogic.doseLabel(pill),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    RxInfoLines(pill.instructions, supply)
                 }
                 IconButton(onClick = onEdit) {
                     Icon(
@@ -275,6 +307,7 @@ fun AsNeededCard(
 @Composable
 fun TimelineCard(
     entry: TimelineEntry,
+    supply: SupplyInfo?,
     onTaken: () -> Unit,
     onSkip: () -> Unit,
     onEdit: () -> Unit
@@ -302,10 +335,11 @@ fun TimelineCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = entry.pill.name, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = "${entry.pill.dosage} ${entry.pill.unit}",
+                        text = RxFormLogic.doseLabel(entry.pill),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    RxInfoLines(entry.pill.instructions, supply)
                 }
                 
                 IconButton(onClick = onEdit) {

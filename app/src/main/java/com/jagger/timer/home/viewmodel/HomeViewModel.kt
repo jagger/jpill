@@ -14,6 +14,8 @@ import com.jagger.timer.core.data.repository.PillRepository
 import com.jagger.timer.core.util.CooldownCalculator
 import com.jagger.timer.core.util.CooldownState
 import com.jagger.timer.core.util.ScheduleManager
+import com.jagger.timer.core.util.SupplyCalculator
+import com.jagger.timer.core.util.SupplyStatus
 import com.jagger.timer.core.util.TakenDose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +38,9 @@ import javax.inject.Inject
  * without it, equal states are de-duplicated by StateFlow and the countdown text never redraws.
  */
 data class AsNeededItem(val pill: PillEntity, val cooldown: CooldownState, val nowMillis: Long)
+
+/** Supply for a tracked prescription: count on hand, estimated days left (null if not estimable), status. */
+data class SupplyInfo(val supply: Double, val daysLeft: Double?, val status: SupplyStatus)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -79,6 +84,26 @@ class HomeViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Supply and days-left for prescriptions that track it, by pill id. Updates as doses are logged. */
+    val supply: StateFlow<Map<Long, SupplyInfo>> = pillRepository.getAllPills()
+        .flatMapLatest { pills ->
+            val tracked = pills.filter { it.isPrescription && it.supplyCount != null }
+            if (tracked.isEmpty()) {
+                flowOf(emptyMap())
+            } else {
+                combine(tracked.map { pillRepository.getSchedulesForPill(it.id) }) { schedulesPerPill ->
+                    tracked.zip(schedulesPerPill.toList()).associate { (pill, schedules) ->
+                        pill.id to SupplyInfo(
+                            supply = pill.supplyCount!!,
+                            daysLeft = SupplyCalculator.daysLeft(pill, schedules),
+                            status = SupplyCalculator.status(pill, schedules)
+                        )
+                    }
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** Logs an as-needed dose as taken right now. */
     fun takeNow(pill: PillEntity) {

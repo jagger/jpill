@@ -65,6 +65,27 @@ class AlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, pillId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    /** One-shot alarm for the prescription refill reminder. Replaces any earlier one for this pill. */
+    fun scheduleRefillAlarm(pillId: Long, triggerAtMillis: Long) {
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerAtMillis,
+            refillPendingIntent(pillId, PendingIntent.FLAG_UPDATE_CURRENT)!!
+        )
+    }
+
+    fun cancelRefillAlarm(pillId: Long) {
+        refillPendingIntent(pillId, PendingIntent.FLAG_NO_CREATE)?.let { alarmManager.cancel(it) }
+    }
+
+    private fun refillPendingIntent(pillId: Long, flag: Int): PendingIntent? {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_REFILL_DUE
+            putExtra(AlarmReceiver.EXTRA_PILL_ID, pillId)
+        }
+        return PendingIntent.getBroadcast(context, pillId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     fun cancelAlarm(schedule: ScheduleEntity) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = "com.jagger.timer.ACTION_PILL_REMINDER"

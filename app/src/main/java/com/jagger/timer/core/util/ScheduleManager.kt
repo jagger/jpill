@@ -13,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class ScheduleManager @Inject constructor(
     private val pillRepository: PillRepository,
-    private val alarmScheduler: AlarmScheduler
+    private val alarmScheduler: AlarmScheduler,
+    private val refillState: RefillState
 ) {
 
     suspend fun getUpcomingDoses(hours: Long = 24): List<TimelineEntry> {
@@ -68,7 +69,29 @@ class ScheduleManager @Inject constructor(
         }
     }
 
+    /**
+     * (Re)plans the prescription refill reminder. Re-reads the pill because callers often hold a copy from
+     * before the latest dose decremented supply.
+     */
+    suspend fun refreshRefillAlarm(pillId: Long) {
+        val pill = pillRepository.getPillById(pillId)
+        if (pill == null) {
+            alarmScheduler.cancelRefillAlarm(pillId)
+            refillState.clear(pillId)
+            return
+        }
+        val schedules = pillRepository.getSchedulesForPill(pillId).first()
+        if (RefillPlanner.shouldClearNotified(pill, schedules)) refillState.clear(pillId)
+        val now = System.currentTimeMillis()
+        when (val action = RefillPlanner.plan(pill, schedules, refillState.wasNotified(pillId), now)) {
+            RefillAction.Cancel -> alarmScheduler.cancelRefillAlarm(pillId)
+            RefillAction.FireNow -> alarmScheduler.scheduleRefillAlarm(pillId, now + 1_000)
+            is RefillAction.ScheduleAt -> alarmScheduler.scheduleRefillAlarm(pillId, action.atMillis)
+        }
+    }
+
     suspend fun refreshAlarmsForPill(pill: PillEntity) {
+        refreshRefillAlarm(pill.id)
         if (pill.asNeeded) refreshCooldownAlarm(pill)
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
         val logs = pillRepository.getLogsForPill(pill.id).first()
@@ -92,6 +115,7 @@ class ScheduleManager @Inject constructor(
 
     suspend fun cancelAlarmsForPill(pill: PillEntity) {
         alarmScheduler.cancelCooldownAlarm(pill.id)
+        alarmScheduler.cancelRefillAlarm(pill.id)
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
         for (schedule in schedules) {
             alarmScheduler.cancelAlarm(schedule)

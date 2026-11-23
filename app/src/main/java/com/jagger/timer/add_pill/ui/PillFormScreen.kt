@@ -49,7 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jagger.timer.add_pill.viewmodel.PillFormViewModel
+import com.jagger.timer.core.data.catalog.CatalogResult
+import com.jagger.timer.core.data.catalog.CatalogSource
 import com.jagger.timer.core.data.catalog.OtcCatalog
+import com.jagger.timer.core.data.local.entity.RecurrencePattern
+import com.jagger.timer.core.util.RxFormLogic
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import com.jagger.timer.core.data.local.entity.ScheduleType
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -59,13 +65,15 @@ import androidx.compose.material3.Switch
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PillFormScreen(
     onNavigateBack: () -> Unit,
     viewModel: PillFormViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val query by viewModel.query.collectAsState()
+    val results by viewModel.searchResults.collectAsState()
     var showTimePicker by remember { mutableStateOf(false) }
     // As-needed pills with an amount cap need a numeric dose so the daily total is right.
     val dosageInvalid = uiState.asNeeded && uiState.maxPer24h != null && !uiState.maxIsDoses &&
@@ -111,7 +119,12 @@ fun PillFormScreen(
         ) {
             // Common medicines picker (new pills only)
             if (uiState.pillId == null) {
-                CommonMedicinePicker(onPick = { viewModel.applyCatalogMed(it) })
+                CommonMedicinePicker(
+                    query = query,
+                    results = results,
+                    onQueryChange = { viewModel.updateQuery(it) },
+                    onPick = { viewModel.applyCatalogResult(it) }
+                )
             }
 
             // Pill Details Section
@@ -145,6 +158,59 @@ fun PillFormScreen(
                         singleLine = true
                     )
                 }
+
+                if (uiState.strengthOptions.isNotEmpty()) {
+                    Text("Common strengths", style = MaterialTheme.typography.labelMedium)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.strengthOptions.forEach { s ->
+                            FilterChip(
+                                selected = s == "${uiState.dosage} ${uiState.unit}",
+                                onClick = { viewModel.applyStrength(s) },
+                                label = { Text(s) }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = uiState.tabletsText,
+                    onValueChange = { viewModel.updateTablets(it) },
+                    label = { Text("Tablets per dose") },
+                    supportingText = { Text("Dosage above is the strength of one tablet") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            }
+
+            // Prescription toggle + details
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Prescription", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Track supply and refills, and keep prescriber details.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = uiState.isPrescription, onCheckedChange = { viewModel.updateIsPrescription(it) })
+            }
+            if (uiState.isPrescription) {
+                PrescriptionSection(
+                    supply = uiState.supplyText,
+                    refillDays = uiState.refillDaysText,
+                    instructions = uiState.instructions,
+                    prescriber = uiState.prescriber,
+                    pharmacy = uiState.pharmacy,
+                    rxNumber = uiState.rxNumber,
+                    onSupply = { viewModel.updateSupply(it) },
+                    onRefillDays = { viewModel.updateRefillDays(it) },
+                    onInstructions = { viewModel.updateInstructions(it) },
+                    onPreset = { viewModel.addInstructionPreset(it) },
+                    onPrescriber = { viewModel.updatePrescriber(it) },
+                    onPharmacy = { viewModel.updatePharmacy(it) },
+                    onRxNumber = { viewModel.updateRxNumber(it) }
+                )
             }
 
             // As-needed toggle
@@ -205,6 +271,28 @@ fun PillFormScreen(
 
                 when (uiState.scheduleType) {
                     ScheduleType.FIXED_TIME -> {
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            val patterns = listOf(RecurrencePattern.DAILY to "Every day", RecurrencePattern.WEEKLY to "Certain days")
+                            patterns.forEachIndexed { index, (pattern, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = patterns.size),
+                                    onClick = { viewModel.updateRecurrence(pattern) },
+                                    selected = uiState.recurrencePattern == pattern
+                                ) { Text(label) }
+                            }
+                        }
+                        if (uiState.recurrencePattern == RecurrencePattern.WEEKLY) {
+                            val names = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                names.forEachIndexed { i, n ->
+                                    FilterChip(
+                                        selected = (i + 1) in uiState.selectedDays,
+                                        onClick = { viewModel.toggleDay(i + 1) },
+                                        label = { Text(n) }
+                                    )
+                                }
+                            }
+                        }
                         OutlinedCard(
                             onClick = { showTimePicker = true },
                             modifier = Modifier.fillMaxWidth()
@@ -284,16 +372,18 @@ fun PillFormScreen(
 }
 
 @Composable
-private fun CommonMedicinePicker(onPick: (com.jagger.timer.core.data.catalog.OtcMed) -> Unit) {
-    var query by remember { mutableStateOf("") }
-    val results = remember(query) { if (query.isBlank()) emptyList() else OtcCatalog.search(query) }
-
+private fun CommonMedicinePicker(
+    query: String,
+    results: List<CatalogResult>,
+    onQueryChange: (String) -> Unit,
+    onPick: (CatalogResult) -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Common Medicines", style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it },
-            label = { Text("Search by name or brand (e.g. Advil)") },
+            onValueChange = onQueryChange,
+            label = { Text("Search by name or brand (e.g. Advil, Lipitor)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -304,28 +394,119 @@ private fun CommonMedicinePicker(onPick: (com.jagger.timer.core.data.catalog.Otc
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        results.forEach { med ->
-            OutlinedCard(
-                onClick = { onPick(med); query = "" },
-                modifier = Modifier.fillMaxWidth()
-            ) {
+        results.forEach { r ->
+            OutlinedCard(onClick = { onPick(r) }, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text(med.genericName, style = MaterialTheme.typography.titleSmall)
-                    if (med.brandNames.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(r.genericName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                         Text(
-                            med.brandNames.joinToString(", "),
+                            when (r.source) {
+                                CatalogSource.RX -> "Rx"
+                                CatalogSource.OTC -> "OTC"
+                                CatalogSource.DATASET -> "Rx name list"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (r.brandNames.isNotEmpty()) {
+                        Text(
+                            r.brandNames.take(6).joinToString(", "),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        "${med.defaultDose} ${med.unit}, wait ${formatHours(med.minIntervalMinutes)}, " +
-                            "max ${med.maxPer24h}${if (med.maxIsDoses) " doses" else " ${med.unit}"}/24h",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    when (r.source) {
+                        CatalogSource.OTC -> r.otc?.let { med ->
+                            Text(
+                                "${med.defaultDose} ${med.unit}, wait ${formatHours(med.minIntervalMinutes)}, " +
+                                    "max ${med.maxPer24h}${if (med.maxIsDoses) " doses" else " ${med.unit}"}/24h",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        CatalogSource.RX -> r.rx?.let { rx ->
+                            Text(
+                                "Typically ${rx.frequency.label.lowercase()}. Dose is set by your prescriber.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        CatalogSource.DATASET -> if (r.strengths.isNotEmpty()) {
+                            Text(
+                                r.strengths.take(4).joinToString(", "),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PrescriptionSection(
+    supply: String,
+    refillDays: String,
+    instructions: String,
+    prescriber: String,
+    pharmacy: String,
+    rxNumber: String,
+    onSupply: (String) -> Unit,
+    onRefillDays: (String) -> Unit,
+    onInstructions: (String) -> Unit,
+    onPreset: (String) -> Unit,
+    onPrescriber: (String) -> Unit,
+    onPharmacy: (String) -> Unit,
+    onRxNumber: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Supply and Refills", style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = supply,
+                onValueChange = onSupply,
+                label = { Text("Tablets on hand") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+            OutlinedTextField(
+                value = refillDays,
+                onValueChange = onRefillDays,
+                label = { Text("Remind at (days left)") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
+        Text(
+            "Leave tablets on hand empty to skip supply tracking. After a refill, edit this pill and enter the new count.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text("Food and Timing Notes", style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RxFormLogic.INSTRUCTION_PRESETS.forEach { phrase ->
+                FilterChip(
+                    selected = instructions.contains(phrase, ignoreCase = true),
+                    onClick = { onPreset(phrase) },
+                    label = { Text(phrase) }
+                )
+            }
+        }
+        OutlinedTextField(
+            value = instructions,
+            onValueChange = onInstructions,
+            label = { Text("Notes") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text("Prescription Details", style = MaterialTheme.typography.titleSmall)
+        OutlinedTextField(prescriber, onPrescriber, label = { Text("Prescriber") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(pharmacy, onPharmacy, label = { Text("Pharmacy") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(rxNumber, onRxNumber, label = { Text("Rx number") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     }
 }
 
