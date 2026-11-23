@@ -1,5 +1,6 @@
 package com.jagger.timer.core.data.repository
 
+import com.jagger.timer.core.data.local.dao.DoseHistoryRow
 import com.jagger.timer.core.data.local.dao.PillDao
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.PillEntity
@@ -18,6 +19,11 @@ class PillRepository @Inject constructor(
 
     suspend fun savePillWithSchedule(pill: PillEntity, schedule: ScheduleEntity): Long =
         pillDao.savePillWithSchedule(pill, schedule)
+
+    fun getAllPillsIncludingArchived(): Flow<List<PillEntity>> = pillDao.getAllPillsIncludingArchived()
+
+    fun getHistory(pillId: Long, status: String, limit: Int): Flow<List<DoseHistoryRow>> =
+        pillDao.getHistory(pillId, status, limit)
 
     fun getArchivedPills(): Flow<List<PillEntity>> = pillDao.getArchivedPills()
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -52,6 +53,7 @@ import java.time.format.DateTimeFormatter
 fun HomeScreen(
     onAddPillClick: () -> Unit,
     onEditPillClick: (Long) -> Unit,
+    onHistoryClick: () -> Unit = {},
     onArchivedClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
@@ -68,10 +70,21 @@ fun HomeScreen(
             CenterAlignedTopAppBar(
                 title = { Text("jPill", fontWeight = FontWeight.Bold) },
                 actions = {
-                    if (archivedCount > 0) {
-                        IconButton(onClick = onArchivedClick) {
-                            Icon(Icons.Default.Archive, contentDescription = "Archived ($archivedCount)")
-                        }
+                    var menuOpen by remember { mutableStateOf(false) }
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("History") },
+                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
+                            onClick = { menuOpen = false; onHistoryClick() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (archivedCount > 0) "Archived ($archivedCount)" else "Archived") },
+                            leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
+                            onClick = { menuOpen = false; onArchivedClick() }
+                        )
                     }
                 }
             )

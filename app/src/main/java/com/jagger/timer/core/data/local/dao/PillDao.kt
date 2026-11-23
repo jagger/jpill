@@ -14,6 +14,24 @@ interface PillDao {
     @Query("SELECT * FROM pills WHERE isArchived = 0")
     fun getAllPills(): Flow<List<PillEntity>>
 
+    /** Every pill, archived or not, for the History filter. */
+    @Query("SELECT * FROM pills ORDER BY name COLLATE NOCASE")
+    fun getAllPillsIncludingArchived(): Flow<List<PillEntity>>
+
+    /**
+     * Dose history, newest first. [pillId] -1 = all medications; [status] "" = all statuses, else a DoseStatus name.
+     * Joins the pill so archived medications are listed too.
+     */
+    @Query("""
+        SELECT l.id AS logId, l.pillId AS pillId, p.name AS pillName, p.unit AS pillUnit, p.isArchived AS isArchived,
+               l.timestamp AS timestamp, l.status AS status, l.amount AS amount, l.note AS note
+        FROM dose_logs l JOIN pills p ON p.id = l.pillId
+        WHERE (:pillId = -1 OR l.pillId = :pillId) AND (:status = '' OR l.status = :status)
+        ORDER BY l.timestamp DESC
+        LIMIT :limit
+    """)
+    fun getHistory(pillId: Long, status: String, limit: Int): Flow<List<DoseHistoryRow>>
+
     @Query("SELECT * FROM pills WHERE isArchived = 1 ORDER BY archivedAt DESC")
     fun getArchivedPills(): Flow<List<PillEntity>>
 

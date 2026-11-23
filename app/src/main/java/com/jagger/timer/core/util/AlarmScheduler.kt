@@ -76,6 +76,32 @@ class AlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, pillId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    /**
+     * Fires once after a scheduled dose came due plus its grace window, to log it as missed if nothing was
+     * logged. One pending check per schedule (a later refresh replaces it with the next dose's).
+     */
+    fun scheduleMissedCheck(pillId: Long, scheduleId: Long, dueAtMillis: Long, triggerAtMillis: Long) {
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerAtMillis,
+            missedCheckPendingIntent(pillId, scheduleId, dueAtMillis, PendingIntent.FLAG_UPDATE_CURRENT)!!
+        )
+    }
+
+    fun cancelMissedCheck(scheduleId: Long) {
+        missedCheckPendingIntent(-1L, scheduleId, 0L, PendingIntent.FLAG_NO_CREATE)?.let { alarmManager.cancel(it) }
+    }
+
+    private fun missedCheckPendingIntent(pillId: Long, scheduleId: Long, dueAtMillis: Long, flag: Int): PendingIntent? {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_MISSED_CHECK
+            putExtra(AlarmReceiver.EXTRA_PILL_ID, pillId)
+            putExtra(AlarmReceiver.EXTRA_SCHEDULE_ID, scheduleId)
+            putExtra(AlarmReceiver.EXTRA_DUE_AT, dueAtMillis)
+        }
+        return PendingIntent.getBroadcast(context, scheduleId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     /** One-shot alarm for the prescription refill reminder. Replaces any earlier one for this pill. */
     fun scheduleRefillAlarm(pillId: Long, triggerAtMillis: Long) {
         alarmManager.setExactAndAllowWhileIdle(
