@@ -43,6 +43,28 @@ class AlarmScheduler @Inject constructor(
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
     }
 
+    /** One-shot alarm for "your wait is over" on an as-needed pill. Replaces any earlier one. */
+    fun scheduleCooldownAlarm(pillId: Long, triggerAtMillis: Long) {
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerAtMillis,
+            cooldownPendingIntent(pillId, PendingIntent.FLAG_UPDATE_CURRENT)!!
+        )
+    }
+
+    fun cancelCooldownAlarm(pillId: Long) {
+        cooldownPendingIntent(pillId, PendingIntent.FLAG_NO_CREATE)?.let { alarmManager.cancel(it) }
+    }
+
+    // Distinct action keeps this from colliding with schedule alarms, which use schedule.id as request code.
+    private fun cooldownPendingIntent(pillId: Long, flag: Int): PendingIntent? {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_COOLDOWN_DONE
+            putExtra(AlarmReceiver.EXTRA_PILL_ID, pillId)
+        }
+        return PendingIntent.getBroadcast(context, pillId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     fun cancelAlarm(schedule: ScheduleEntity) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = "com.jagger.timer.ACTION_PILL_REMINDER"

@@ -19,6 +19,14 @@ class PillRepository @Inject constructor(
     suspend fun savePillWithSchedule(pill: PillEntity, schedule: ScheduleEntity): Long =
         pillDao.savePillWithSchedule(pill, schedule)
 
+    fun getAsNeededPills(): Flow<List<PillEntity>> = pillDao.getAsNeededPills()
+
+    /** Saves an as-needed pill; drops any schedules it had. Cancel its alarms first. */
+    suspend fun saveAsNeededPill(pill: PillEntity): Long = pillDao.saveAsNeededPill(pill)
+
+    fun getTakenLogsSince(pillId: Long, sinceMillis: Long): Flow<List<DoseLogEntity>> =
+        pillDao.getTakenLogsSince(pillId, sinceMillis)
+
     suspend fun deletePill(pill: PillEntity) = pillDao.deletePill(pill)
 
     fun getSchedulesForPill(pillId: Long): Flow<List<ScheduleEntity>> =

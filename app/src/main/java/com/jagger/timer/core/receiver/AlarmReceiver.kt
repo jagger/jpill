@@ -1,12 +1,20 @@
 package com.jagger.timer.core.receiver
 
+import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+import com.jagger.timer.MainActivity
+import com.jagger.timer.core.data.local.entity.PillEntity
+import com.jagger.timer.core.util.CooldownCalculator
+import com.jagger.timer.core.util.CooldownStatus
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.DoseStatus
+import com.jagger.timer.core.data.local.entity.doseAmount
 import com.jagger.timer.core.data.repository.PillRepository
 import com.jagger.timer.core.service.PillReminderService
 import com.jagger.timer.core.util.AlarmScheduler
@@ -28,6 +36,9 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_TAKEN = "com.jagger.timer.ACTION_TAKEN"
         const val ACTION_SKIPPED = "com.jagger.timer.ACTION_SKIPPED"
         const val ACTION_SNOOZE = "com.jagger.timer.ACTION_SNOOZE"
+        const val ACTION_COOLDOWN_DONE = "com.jagger.timer.ACTION_COOLDOWN_DONE"
+
+        const val COOLDOWN_CHANNEL_ID = "dose_available"
 
         const val EXTRA_PILL_ID = "PILL_ID"
         const val EXTRA_SCHEDULE_ID = "SCHEDULE_ID"
@@ -57,6 +68,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_TAKEN -> handleDoseAction(context, pillId, scheduleId, DoseStatus.TAKEN)
             ACTION_SKIPPED -> handleDoseAction(context, pillId, scheduleId, DoseStatus.SKIPPED)
             ACTION_SNOOZE -> handleSnoozeAction(context, pillId, scheduleId)
+            ACTION_COOLDOWN_DONE -> handleCooldownDone(context, pillId)
         }
     }
 
@@ -66,21 +78,72 @@ class AlarmReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 cancelNotification(context, pillId)
+                val pill = pillRepository.getPillById(pillId)
                 pillRepository.logDose(
                     DoseLogEntity(
                         pillId = pillId,
                         scheduleId = if (scheduleId == -1L) null else scheduleId,
                         timestamp = System.currentTimeMillis(),
-                        status = status
+                        status = status,
+                        amount = pill?.doseAmount()
                     )
                 )
-                val pill = pillRepository.getPillById(pillId)
                 pill?.let { scheduleManager.refreshAlarmsForPill(it) }
                 context.stopService(Intent(context, PillReminderService::class.java))
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    /** The wait for an as-needed pill is over: tell the user, unless a newer dose moved the time. */
+    private fun handleCooldownDone(context: Context, pillId: Long) {
+        if (pillId == -1L) return
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                val pill = pillRepository.getPillById(pillId) ?: return@launch
+                if (!pill.asNeeded) return@launch
+                val now = System.currentTimeMillis()
+                val logs = pillRepository.getTakenLogsSince(pillId, now - CooldownCalculator.WINDOW_MILLIS).first()
+                val cooldown = CooldownCalculator.forPill(pill, logs, now)
+                if (cooldown.status == CooldownStatus.READY) {
+                    postDoseAvailableNotification(context, pill)
+                } else {
+                    // Fired early or the schedule changed: wait for the real time.
+                    scheduleManager.refreshCooldownAlarm(pill)
+                }
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private fun postDoseAvailableNotification(context: Context, pill: PillEntity) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(
+                COOLDOWN_CHANNEL_ID,
+                "Dose available",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Tells you when the wait between as-needed doses is over" }
+        )
+        val id = safeNotificationId(pill.id) or 0x40000000 // distinct from scheduled-reminder ids
+        val open = PendingIntent.getActivity(
+            context, id,
+            Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, COOLDOWN_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("${pill.name} is available again")
+            .setContentText("The wait is over. Check your label before taking another dose.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        nm.notify(id, notification)
     }
 
     private fun handleSnoozeAction(context: Context, pillId: Long, scheduleId: Long) {
