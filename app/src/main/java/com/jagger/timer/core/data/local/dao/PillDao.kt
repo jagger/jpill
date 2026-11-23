@@ -2,6 +2,8 @@ package com.jagger.timer.core.data.local.dao
 
 import androidx.room.*
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
+import com.jagger.timer.core.data.local.entity.DoseStatus
+import com.jagger.timer.core.util.SupplyCalculator
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import kotlinx.coroutines.flow.Flow
@@ -66,6 +68,26 @@ interface PillDao {
     }
 
     // Dose Log Queries
+    @Query("UPDATE pills SET supplyCount = :supply WHERE id = :pillId")
+    suspend fun updateSupply(pillId: Long, supply: Double?)
+
+    /**
+     * Inserts a dose log and, for a TAKEN dose on a pill that tracks supply, subtracts
+     * `tabletsPerDose` from `supplyCount` (floored at 0) in the same transaction.
+     */
+    @Transaction
+    suspend fun logDoseAndAdjustSupply(log: DoseLogEntity): Long {
+        val id = insertDoseLog(log)
+        if (log.status == DoseStatus.TAKEN) {
+            val pill = getPillById(log.pillId)
+            val supply = pill?.supplyCount
+            if (pill != null && supply != null) {
+                updateSupply(pill.id, SupplyCalculator.afterDose(supply, pill.tabletsPerDose))
+            }
+        }
+        return id
+    }
+
     @Query("SELECT * FROM dose_logs WHERE pillId = :pillId ORDER BY timestamp DESC")
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>>
 

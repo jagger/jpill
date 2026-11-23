@@ -34,7 +34,10 @@ class PillRepository @Inject constructor(
 
     fun getLogsForPill(pillId: Long): Flow<List<DoseLogEntity>> = pillDao.getLogsForPill(pillId)
 
-    suspend fun logDose(log: DoseLogEntity): Long = pillDao.insertDoseLog(log)
+    /** Logs a dose; a TAKEN dose also decrements the pill's supply, atomically. */
+    suspend fun logDose(log: DoseLogEntity): Long = pillDao.logDoseAndAdjustSupply(log)
+
+    suspend fun setSupply(pillId: Long, supply: Double?) = pillDao.updateSupply(pillId, supply)
 
     fun getRecentLogs(limit: Int): Flow<List<DoseLogEntity>> = pillDao.getRecentLogs(limit)
 }

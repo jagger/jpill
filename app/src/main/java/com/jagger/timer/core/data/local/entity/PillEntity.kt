@@ -4,8 +4,11 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** Numeric dose from [PillEntity.dosage], or null if it isn't a plain number (e.g. "1/2"). */
-fun PillEntity.doseAmount(): Double? = dosage.trim().toDoubleOrNull()
+/**
+ * Amount taken per dose in [PillEntity.unit]: strength ([PillEntity.dosage]) x [PillEntity.tabletsPerDose].
+ * Null if the strength isn't a plain number (e.g. "1/2").
+ */
+fun PillEntity.doseAmount(): Double? = dosage.trim().toDoubleOrNull()?.let { it * tabletsPerDose }
 
 @Entity(tableName = "pills")
 data class PillEntity(
@@ -25,6 +28,23 @@ data class PillEntity(
     val maxPer24h: Int? = null,
     @ColumnInfo(defaultValue = "0")
     val maxIsDoses: Boolean = false,
-    /** Id of the OtcCatalog entry this pill was created from, if any. */
-    val catalogId: String? = null
+    /** Id of the catalog entry (OTC or prescription) this pill was created from, if any. */
+    val catalogId: String? = null,
+
+    // --- Prescriptions (DB v3) ---
+    @ColumnInfo(defaultValue = "0")
+    val isPrescription: Boolean = false,
+    /** Tablets/units taken per dose. [dosage] is the strength of one tablet. */
+    @ColumnInfo(defaultValue = "1.0")
+    val tabletsPerDose: Double = 1.0,
+    /** Tablets/units on hand; null = not tracking supply. Decremented when a dose is logged as taken. */
+    val supplyCount: Double? = null,
+    /** Send the refill reminder when this many days of supply remain. */
+    @ColumnInfo(defaultValue = "7")
+    val refillThresholdDays: Int = 7,
+    /** Food/timing notes, e.g. "With food". */
+    val instructions: String? = null,
+    val prescriber: String? = null,
+    val pharmacy: String? = null,
+    val rxNumber: String? = null
 )
