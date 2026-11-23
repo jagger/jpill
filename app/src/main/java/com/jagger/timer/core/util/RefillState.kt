@@ -6,16 +6,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Remembers which prescriptions already got their "time to refill" reminder, so it fires once per low spell
- * (not after every dose). Cleared when supply is healthy again. Kept in preferences, not the database.
+ * Remembers how far each prescription's refill reminders have escalated: 0 = none, 1 = "low" reminder sent,
+ * 2 = "out of pills" reminder sent. So you get at most one of each per low spell, not one after every dose.
+ * Cleared when supply is healthy again. Kept in preferences, not the database.
  */
 @Singleton
 class RefillState @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = context.getSharedPreferences("refill_state", Context.MODE_PRIVATE)
 
-    fun wasNotified(pillId: Long): Boolean = prefs.getBoolean(key(pillId), false)
-    fun setNotified(pillId: Long) = prefs.edit().putBoolean(key(pillId), true).apply()
+    fun level(pillId: Long): Int = prefs.getInt(key(pillId), 0)
+    fun setLevel(pillId: Long, level: Int) = prefs.edit().putInt(key(pillId), level).apply()
     fun clear(pillId: Long) = prefs.edit().remove(key(pillId)).apply()
 
-    private fun key(pillId: Long) = "notified_$pillId"
+    private fun key(pillId: Long) = "level_$pillId"
 }

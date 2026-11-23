@@ -80,11 +80,32 @@ fun PillFormScreen(
         uiState.dosage.trim().toDoubleOrNull() == null
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showArchiveConfirm by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.isSaved, uiState.isDeleted) {
-        if (uiState.isSaved || uiState.isDeleted) {
+    LaunchedEffect(uiState.isSaved, uiState.isDeleted, uiState.isArchived) {
+        if (uiState.isSaved || uiState.isDeleted || uiState.isArchived) {
             onNavigateBack()
         }
+    }
+
+    if (showArchiveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm = false },
+            title = { Text("Archive ${uiState.name.ifBlank { "this medication" }}?") },
+            text = {
+                Text(
+                    "It disappears from your home screen and all its reminders stop. " +
+                        "Its dose history is kept, and you can restore it any time from Archived."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveConfirm = false
+                    viewModel.archivePill()
+                }) { Text("Archive") }
+            },
+            dismissButton = { TextButton(onClick = { showArchiveConfirm = false }) { Text("Cancel") } }
+        )
     }
 
     if (showDeleteConfirm) {
@@ -93,7 +114,8 @@ fun PillFormScreen(
             title = { Text("Delete ${uiState.name.ifBlank { "this medication" }}?") },
             text = {
                 Text(
-                    "This removes the medication, its reminders and its dose history. This can't be undone."
+                    "This removes the medication, its reminders and its dose history, for good. " +
+                        "To keep the history, archive it instead."
                 )
             },
             confirmButton = {
@@ -390,6 +412,13 @@ fun PillFormScreen(
             }
 
             if (uiState.pillId != null) {
+                OutlinedButton(
+                    onClick = { showArchiveConfirm = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isSaving && !uiState.isLoading
+                ) {
+                    Text("Archive (keeps history)")
+                }
                 OutlinedButton(
                     onClick = { showDeleteConfirm = true },
                     modifier = Modifier.fillMaxWidth(),

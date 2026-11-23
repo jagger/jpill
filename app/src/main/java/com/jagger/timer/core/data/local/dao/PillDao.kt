@@ -10,8 +10,15 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PillDao {
-    @Query("SELECT * FROM pills")
+    /** Active (non-archived) pills: what the home screen, alarms and boot restore work with. */
+    @Query("SELECT * FROM pills WHERE isArchived = 0")
     fun getAllPills(): Flow<List<PillEntity>>
+
+    @Query("SELECT * FROM pills WHERE isArchived = 1 ORDER BY archivedAt DESC")
+    fun getArchivedPills(): Flow<List<PillEntity>>
+
+    @Query("UPDATE pills SET isArchived = :archived, archivedAt = :at WHERE id = :pillId")
+    suspend fun setArchived(pillId: Long, archived: Boolean, at: Long?)
 
     @Query("SELECT * FROM pills WHERE id = :id")
     suspend fun getPillById(id: Long): PillEntity?
@@ -25,7 +32,7 @@ interface PillDao {
     @Delete
     suspend fun deletePill(pill: PillEntity)
 
-    @Query("SELECT * FROM pills WHERE asNeeded = 1")
+    @Query("SELECT * FROM pills WHERE asNeeded = 1 AND isArchived = 0")
     fun getAsNeededPills(): Flow<List<PillEntity>>
 
     /** Atomically saves an as-needed pill and removes any schedules it previously had. */

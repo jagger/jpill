@@ -14,11 +14,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Weekly schedules: "Certain days" with a weekday picker.
 - Room schema export, with instrumented tests for the v2 -> v3 migration and the atomic supply decrement.
 
+- **Archive a medication.** The Edit screen has an "Archive (keeps history)" button. An archived medication disappears from the home screen and all its reminders stop (schedule alarms, "available again" and refill alarms, notifications already showing), but its schedule, supply and full dose history are kept. A new **Archived** screen (button appears in the top bar when something is archived) lists archived medications with doses taken and last taken date, and lets you **Restore** (reminders re-arm) or **Delete** permanently.
+- Refill reminders escalate: one "refill soon" when supply is low and one "you're out of ..." when it runs out, each once per low spell.
+
 ### Fixed
 - **You can now delete a medication.** The Edit screen has a "Delete medication" button with a confirmation. Deleting also cancels its alarms and any reminder, "available again" or refill notification already showing, clears its refill flag, and removes its schedules and dose history. Before, the delete code existed but nothing in the app could trigger it.
 
 ### Changed
-- Database upgraded to version 3 (non-destructive migration).
+- Database upgraded to version 4 (non-destructive migrations: prescriptions in v3, archiving in v4).
 - The "Common Medicines" search now covers prescriptions and the name list as well as OTC.
 
 ## [0.1.0] - 2026-11-23

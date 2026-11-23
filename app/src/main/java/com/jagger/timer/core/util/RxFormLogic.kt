@@ -56,27 +56,41 @@ sealed class RefillAction {
 }
 
 object RefillPlanner {
+    const val LEVEL_NONE = 0
+    const val LEVEL_LOW = 1
+    const val LEVEL_EMPTY = 2
+
+    /** Escalation level a supply status calls for. */
+    fun levelFor(status: SupplyStatus): Int = when (status) {
+        SupplyStatus.OK -> LEVEL_NONE
+        SupplyStatus.LOW -> LEVEL_LOW
+        SupplyStatus.EMPTY -> LEVEL_EMPTY
+    }
+
     /**
-     * Decides the reminder action. [alreadyNotified] makes the reminder fire once per low spell: it is cleared
-     * when supply goes back above the threshold (e.g. after entering a refill), re-arming the next reminder.
+     * Decides the reminder action. [notifiedLevel] is how far reminders already escalated: each level fires once
+     * per low spell (low, then out of pills). It is cleared when supply goes back above the threshold
+     * (e.g. after entering a refill), re-arming the next reminder.
      */
     fun plan(
         pill: PillEntity,
         schedules: List<ScheduleEntity>,
-        alreadyNotified: Boolean,
+        notifiedLevel: Int,
         nowMillis: Long
     ): RefillAction {
         if (!pill.isPrescription || pill.supplyCount == null) return RefillAction.Cancel
-        return when (SupplyCalculator.status(pill, schedules)) {
+        val status = SupplyCalculator.status(pill, schedules)
+        return when (status) {
             SupplyStatus.OK -> {
                 val at = SupplyCalculator.refillAlertAtMillis(pill, schedules, nowMillis)
                 if (at == null) RefillAction.Cancel else RefillAction.ScheduleAt(at)
             }
-            SupplyStatus.LOW, SupplyStatus.EMPTY -> if (alreadyNotified) RefillAction.Cancel else RefillAction.FireNow
+            SupplyStatus.LOW, SupplyStatus.EMPTY ->
+                if (notifiedLevel >= levelFor(status)) RefillAction.Cancel else RefillAction.FireNow
         }
     }
 
-    /** Whether the "already notified" flag should be cleared (supply is healthy again or no longer tracked). */
+    /** Whether the notified level should be cleared (supply is healthy again or no longer tracked). */
     fun shouldClearNotified(pill: PillEntity, schedules: List<ScheduleEntity>): Boolean =
         !pill.isPrescription || pill.supplyCount == null || SupplyCalculator.status(pill, schedules) == SupplyStatus.OK
 }

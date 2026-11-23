@@ -15,13 +15,21 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
         ScheduleEntity::class,
         DoseLogEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun pillDao(): PillDao
 
     companion object {
+        /** v3 -> v4: archiving (hide a pill and stop reminders without deleting its history). */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pills ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pills ADD COLUMN archivedAt INTEGER")
+            }
+        }
+
         /** v2 -> v3: prescriptions (tablets per dose, supply/refills, notes, prescriber details). */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {

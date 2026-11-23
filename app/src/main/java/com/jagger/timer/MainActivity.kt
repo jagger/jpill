@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.jagger.timer.add_pill.ui.PillFormScreen
+import com.jagger.timer.archive.ui.ArchivedScreen
 import com.jagger.timer.home.ui.HomeScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -43,8 +44,12 @@ class MainActivity : ComponentActivity() {
                     composable("home") {
                         HomeScreen(
                             onAddPillClick = { navController.navigate("pill_form") },
-                            onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") }
+                            onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") },
+                            onArchivedClick = { navController.navigate("archived") }
                         )
+                    }
+                    composable("archived") {
+                        ArchivedScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(
                         route = "pill_form?pillId={pillId}",

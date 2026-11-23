@@ -83,7 +83,7 @@ class ScheduleManager @Inject constructor(
         val schedules = pillRepository.getSchedulesForPill(pillId).first()
         if (RefillPlanner.shouldClearNotified(pill, schedules)) refillState.clear(pillId)
         val now = System.currentTimeMillis()
-        when (val action = RefillPlanner.plan(pill, schedules, refillState.wasNotified(pillId), now)) {
+        when (val action = RefillPlanner.plan(pill, schedules, refillState.level(pillId), now)) {
             RefillAction.Cancel -> alarmScheduler.cancelRefillAlarm(pillId)
             RefillAction.FireNow -> alarmScheduler.scheduleRefillAlarm(pillId, now + 1_000)
             is RefillAction.ScheduleAt -> alarmScheduler.scheduleRefillAlarm(pillId, action.atMillis)
@@ -111,6 +111,22 @@ class ScheduleManager @Inject constructor(
                 alarmScheduler.scheduleAlarm(pill, schedule, finalTrigger)
             }
         }
+    }
+
+    /**
+     * Archives a pill: hides it and stops everything that would nag you (alarms, cooldown/refill alarms, posted
+     * notifications). Schedules and dose history are kept so it can be restored later.
+     */
+    suspend fun archivePill(pill: PillEntity) {
+        cancelAlarmsForPill(pill)
+        alarmScheduler.cancelPillNotifications(pill.id)
+        pillRepository.setArchived(pill.id, true, System.currentTimeMillis())
+    }
+
+    /** Restores an archived pill and re-arms its reminders. */
+    suspend fun restorePill(pill: PillEntity) {
+        pillRepository.setArchived(pill.id, false, null)
+        pillRepository.getPillById(pill.id)?.let { refreshAlarmsForPill(it) }
     }
 
     /**

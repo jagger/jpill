@@ -56,19 +56,27 @@ class RxFormLogicTest {
     private val daily = listOf(ScheduleEntity(pillId = 1, type = ScheduleType.FIXED_TIME, pattern = RecurrencePattern.DAILY, timeMinutes = 480))
 
     @Test fun plan_cancelsWhenNotTracking() {
-        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(null), daily, false, now))
-        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(30.0, rxFlag = false), daily, false, now))
+        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(null), daily, 0, now))
+        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(30.0, rxFlag = false), daily, 0, now))
     }
 
     @Test fun plan_schedulesFutureAlertWhenSupplyHealthy() {
-        val action = RefillPlanner.plan(rx(30.0), daily, false, now) as RefillAction.ScheduleAt
+        val action = RefillPlanner.plan(rx(30.0), daily, 0, now) as RefillAction.ScheduleAt
         assertEquals(now + 23 * 86_400_000L, action.atMillis)
     }
 
-    @Test fun plan_firesOnceWhenLow() {
-        assertEquals(RefillAction.FireNow, RefillPlanner.plan(rx(5.0), daily, false, now))
-        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(5.0), daily, true, now))   // already reminded
-        assertEquals(RefillAction.FireNow, RefillPlanner.plan(rx(0.0), daily, false, now)) // out of pills
+    @Test fun plan_firesOncePerLevel_lowThenOut() {
+        assertEquals(RefillAction.FireNow, RefillPlanner.plan(rx(5.0), daily, RefillPlanner.LEVEL_NONE, now))
+        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(5.0), daily, RefillPlanner.LEVEL_LOW, now))    // already told "low"
+        assertEquals(RefillAction.FireNow, RefillPlanner.plan(rx(0.0), daily, RefillPlanner.LEVEL_LOW, now))   // escalates to "out"
+        assertEquals(RefillAction.Cancel, RefillPlanner.plan(rx(0.0), daily, RefillPlanner.LEVEL_EMPTY, now)) // already told "out"
+        assertEquals(RefillAction.FireNow, RefillPlanner.plan(rx(0.0), daily, RefillPlanner.LEVEL_NONE, now))  // straight to out
+    }
+
+    @Test fun levelFor_matchesStatus() {
+        assertEquals(RefillPlanner.LEVEL_NONE, RefillPlanner.levelFor(SupplyStatus.OK))
+        assertEquals(RefillPlanner.LEVEL_LOW, RefillPlanner.levelFor(SupplyStatus.LOW))
+        assertEquals(RefillPlanner.LEVEL_EMPTY, RefillPlanner.levelFor(SupplyStatus.EMPTY))
     }
 
     @Test fun clearNotified_onceSupplyIsHealthyAgain() {

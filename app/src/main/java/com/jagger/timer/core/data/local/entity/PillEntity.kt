@@ -46,5 +46,11 @@ data class PillEntity(
     val instructions: String? = null,
     val prescriber: String? = null,
     val pharmacy: String? = null,
-    val rxNumber: String? = null
+    val rxNumber: String? = null,
+
+    // --- Archive (DB v4) ---
+    /** Archived pills are hidden and stop all reminders, but keep their schedules and dose history. */
+    @ColumnInfo(defaultValue = "0")
+    val isArchived: Boolean = false,
+    val archivedAt: Long? = null
 )

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -51,6 +52,7 @@ import java.time.format.DateTimeFormatter
 fun HomeScreen(
     onAddPillClick: () -> Unit,
     onEditPillClick: (Long) -> Unit,
+    onArchivedClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -58,12 +60,20 @@ fun HomeScreen(
     val timeline by viewModel.timeline.collectAsState()
     val asNeeded by viewModel.asNeeded.collectAsState()
     val supply by viewModel.supply.collectAsState()
+    val archivedCount by viewModel.archivedCount.collectAsState()
     var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("jPill", fontWeight = FontWeight.Bold) }
+                title = { Text("jPill", fontWeight = FontWeight.Bold) },
+                actions = {
+                    if (archivedCount > 0) {
+                        IconButton(onClick = onArchivedClick) {
+                            Icon(Icons.Default.Archive, contentDescription = "Archived ($archivedCount)")
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {

@@ -117,9 +117,15 @@ In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: 
 - `RxCatalog` data is typical-adult and **unverified**: review against DailyMed before relying on it. A test guarantees `RxMed` has no dose/limit fields.
 - Supply: `PillDao.logDoseAndAdjustSupply` inserts the log and subtracts `tabletsPerDose` (floor 0) in one transaction for TAKEN doses; `PillRepository.logDose` uses it, so every TAKEN path (home button, Take now, notification action) decrements. Skipped doses don't.
 - `SupplyCalculator` (pure): days left = supply / (tablets per dose x doses per day from schedules); status OK / LOW / EMPTY against `refillThresholdDays`.
-- Refill reminder: `ScheduleManager.refreshRefillAlarm(pillId)` re-reads the pill (callers may hold a pre-decrement copy) and `RefillPlanner` decides Cancel / FireNow / ScheduleAt. `AlarmReceiver.ACTION_REFILL_DUE` posts on the `refill_reminders` channel once per low spell; `RefillState` (SharedPreferences) remembers it and is cleared when supply is healthy again (e.g. after entering a refill in the edit form).
+- Refill reminder: `ScheduleManager.refreshRefillAlarm(pillId)` re-reads the pill (callers may hold a pre-decrement copy) and `RefillPlanner` decides Cancel / FireNow / ScheduleAt. `AlarmReceiver.ACTION_REFILL_DUE` posts on the `refill_reminders` channel once per low spell; `RefillState` (SharedPreferences) remembers how far reminders escalated (level 1 low, level 2 out of pills; each fires once per low spell) and is cleared when supply is healthy again (e.g. after entering a refill in the edit form).
 - Bundled names: `tools/build_drug_dataset.py` builds `app/src/main/assets/drugs.csv` from the openFDA NDC directory (CC0, https://open.fda.gov/terms/). Names/strengths/ingredients only (826 rows, ~60 KB). Provenance, license, cleaning rules and known limits are in `docs/DATASETS.md`. Regenerate with `python3 tools/build_drug_dataset.py` (network, ~30 min); `--clean raw.csv out.csv` re-applies the cleaning offline.
 - DB encryption is deferred: biometric-gated keys can't be used by background alarms/notification actions, and Keystore keys don't survive backup restore.
+
+## Archive and Delete
+
+- **Archive** (`ScheduleManager.archivePill`): sets `isArchived`/`archivedAt` (DB v4), cancels schedule/cooldown/refill alarms and the pill's posted notifications. Schedules, supply and dose logs are kept. `PillDao.getAllPills()` and `getAsNeededPills()` exclude archived pills, so the home screen, alarms, boot restore and supply all ignore them. `restorePill` clears the flag and re-arms alarms. UI: Edit screen button; `archive/ui/ArchivedScreen` (Restore / Delete permanently), reached from the home top bar when `archivedCount > 0`.
+- **Delete** (`ScheduleManager.deletePill`): cancels alarms and notifications, clears `RefillState`, deletes the pill; FK cascade removes schedules and dose logs (history is gone, the dialog says so and suggests Archive).
+- Any future screen that lists history (M4) must include archived pills' logs.
 
 ## As-Needed (OTC) Medicines
 
@@ -157,7 +163,7 @@ Required permissions declared in manifest:
 ## What's Built vs What's Next
 
 ### Done
-- Room DB (v2) with pills, schedules, dose logs; `Migration(1, 2)` adds as-needed fields and `dose_logs.amount`
+- Room DB (v4) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
 - Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification

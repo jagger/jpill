@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -84,6 +85,11 @@ class HomeViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** How many archived pills exist (drives the Archived button on the home screen). */
+    val archivedCount: StateFlow<Int> = pillRepository.getArchivedPills()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** Supply and days-left for prescriptions that track it, by pill id. Updates as doses are logged. */
     val supply: StateFlow<Map<Long, SupplyInfo>> = pillRepository.getAllPills()

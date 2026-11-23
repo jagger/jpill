@@ -8,6 +8,7 @@ import com.jagger.timer.MainActivity
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.util.CooldownCalculator
 import com.jagger.timer.core.util.CooldownStatus
+import com.jagger.timer.core.util.RefillPlanner
 import com.jagger.timer.core.util.RefillState
 import com.jagger.timer.core.util.SupplyCalculator
 import com.jagger.timer.core.util.SupplyStatus
@@ -136,11 +137,12 @@ class AlarmReceiver : BroadcastReceiver() {
                 val pill = pillRepository.getPillById(pillId) ?: return@launch
                 val schedules = pillRepository.getSchedulesForPill(pillId).first()
                 val status = SupplyCalculator.status(pill, schedules)
+                val level = RefillPlanner.levelFor(status)
                 if (pill.isPrescription && pill.supplyCount != null &&
-                    status != SupplyStatus.OK && !refillState.wasNotified(pillId)
+                    status != SupplyStatus.OK && refillState.level(pillId) < level
                 ) {
                     postRefillNotification(context, pill, SupplyCalculator.daysLeft(pill, schedules), status)
-                    refillState.setNotified(pillId)
+                    refillState.setLevel(pillId, level)
                 } else {
                     // Fired early or things changed (e.g. refill entered): re-plan.
                     scheduleManager.refreshRefillAlarm(pillId)
