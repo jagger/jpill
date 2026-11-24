@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-24
+
+### Fixed
+- **Doses taken early no longer re-fire their reminder.** A scheduled dose you take or skip up to 2 hours before it is due now counts as that dose: the alarm moves to the next occurrence and no reminder or missed-dose entry follows.
+- **Home shows what you logged.** A taken or skipped dose stays on the list greyed out ("Taken at 7:30 AM") with its buttons disabled until it comes due, so it can't be logged twice. The list now refreshes as soon as a dose is logged.
+
 ## [0.4.0] - 2026-11-24
 
 ### Added
@@ -85,7 +91,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/jagger/jpill/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.4.0
 [0.3.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jagger/jpill/compare/v0.1.0...v0.2.0
