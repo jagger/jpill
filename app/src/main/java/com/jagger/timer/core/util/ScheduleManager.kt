@@ -5,7 +5,9 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import com.jagger.timer.core.data.model.TimelineEntry
 import com.jagger.timer.core.data.repository.PillRepository
 import kotlinx.coroutines.flow.first
+import com.jagger.timer.core.data.local.entity.ScheduleType
 import java.time.Instant
+import java.time.ZoneId
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,6 +23,7 @@ class ScheduleManager @Inject constructor(
         val entries = mutableListOf<TimelineEntry>()
         val pills = pillRepository.getAllPills().first()
         val now = LocalDateTime.now()
+        val nowMillis = System.currentTimeMillis()
         val end = now.plusHours(hours)
 
         for (pill in pills) {
@@ -29,20 +32,48 @@ class ScheduleManager @Inject constructor(
             val lastDoseTimestamp = logs.firstOrNull()?.timestamp
 
             for (schedule in schedules) {
-                val nextOccurrence = ScheduleCalculator.calculateNextOccurrence(
-                    schedule,
-                    lastDoseTimestamp,
-                    now
-                )
-                
+                val nextOccurrence = nextPending(schedule, logs, lastDoseTimestamp, now, nowMillis)
+
                 nextOccurrence?.let {
                     if (it.isBefore(end)) {
                         entries.add(TimelineEntry(pill, schedule, it))
                     }
                 }
+
+                // A dose already taken/skipped (maybe early) stays on the list greyed out until it comes due.
+                if (schedule.type != ScheduleType.INTERVAL) {
+                    val earlier = ScheduleCalculator.calculateNextOccurrence(schedule, lastDoseTimestamp, now)
+                    if (earlier != null) {
+                        val covering = DoseCoverage.findCovering(logs, schedule.id, millis(earlier), nowMillis)
+                        if (covering != null) {
+                            entries.removeAll { e -> e.schedule.id == schedule.id && e.dueTime == earlier }
+                            entries.add(TimelineEntry(pill, schedule, earlier, covering.status, covering.timestamp))
+                        }
+                    }
+                }
             }
         }
         return entries.sortedBy { it.dueTime }
+    }
+
+    private fun millis(t: LocalDateTime) = t.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    /** Next dose that still needs doing: skips an occurrence already taken/skipped (e.g. taken early). */
+    private fun nextPending(
+        schedule: ScheduleEntity,
+        logs: List<com.jagger.timer.core.data.local.entity.DoseLogEntity>,
+        lastDoseTimestamp: Long?,
+        now: LocalDateTime,
+        nowMillis: Long
+    ): LocalDateTime? {
+        var next = ScheduleCalculator.calculateNextOccurrence(schedule, lastDoseTimestamp, now)
+        if (schedule.type == ScheduleType.INTERVAL) return next
+        repeat(3) {
+            val n = next ?: return null
+            if (DoseCoverage.findCovering(logs, schedule.id, millis(n), nowMillis) == null) return n
+            next = ScheduleCalculator.calculateNextOccurrence(schedule, lastDoseTimestamp, n)
+        }
+        return next
     }
 
     suspend fun refreshAlarms() {
@@ -98,11 +129,8 @@ class ScheduleManager @Inject constructor(
         val lastDoseTimestamp = logs.firstOrNull()?.timestamp
 
         for (schedule in schedules) {
-            val nextOccurrence = ScheduleCalculator.calculateNextOccurrence(
-                schedule,
-                lastDoseTimestamp
-            )
-            
+            val nextOccurrence = nextPending(schedule, logs, lastDoseTimestamp, LocalDateTime.now(), System.currentTimeMillis())
+
             nextOccurrence?.let {
                 // If the user wants a reminder 30 min before, we should actually schedule that
                 val reminderTime = it.minusMinutes(schedule.reminderAdvanceMinutes.toLong())

@@ -42,6 +42,7 @@ import com.jagger.timer.core.util.RxFormLogic
 import com.jagger.timer.core.util.SupplyStatus
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -351,10 +352,12 @@ fun TimelineCard(
 ) {
     val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
     
+    val handled = entry.isHandled
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .then(if (handled) Modifier.alpha(0.5f) else Modifier),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -364,6 +367,16 @@ fun TimelineCard(
             ) {
                 PillBadge(entry.pill)
                 Column(modifier = Modifier.weight(1f)) {
+                    if (handled) {
+                        val verb = if (entry.handledStatus == com.jagger.timer.core.data.local.entity.DoseStatus.SKIPPED) "Skipped" else "Taken"
+                        val at = java.time.Instant.ofEpochMilli(entry.handledAt ?: 0L)
+                            .atZone(java.time.ZoneId.systemDefault()).format(timeFormatter)
+                        Text(
+                            text = "$verb at $at",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
                         text = entry.dueTime.format(timeFormatter),
                         style = MaterialTheme.typography.labelLarge,
@@ -399,6 +412,7 @@ fun TimelineCard(
             ) {
                 FilledTonalButton(
                     onClick = onSkip,
+                    enabled = !handled,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -407,6 +421,7 @@ fun TimelineCard(
                 }
                 Button(
                     onClick = onTaken,
+                    enabled = !handled,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))

@@ -55,7 +55,8 @@ class HomeViewModel @Inject constructor(
     val pills: StateFlow<List<PillEntity>> = pillRepository.getAllPills()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val timeline: StateFlow<List<TimelineEntry>> = pillRepository.getAllPills()
+    // Also re-run when any dose is logged, so a taken dose greys out right away.
+    val timeline: StateFlow<List<TimelineEntry>> = combine(pillRepository.getAllPills(), pillRepository.getRecentLogs(1)) { p, l -> p to l }
         .flatMapLatest {
             flow {
                 emit(scheduleManager.getUpcomingDoses())
