@@ -54,7 +54,7 @@ import java.time.format.DateTimeFormatter
 fun HomeScreen(
     onAddPillClick: () -> Unit,
     onEditPillClick: (Long) -> Unit,
-    onHistoryClick: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     onArchivedClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
@@ -77,11 +77,6 @@ fun HomeScreen(
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("History") },
-                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                            onClick = { menuOpen = false; onHistoryClick() }
-                        )
-                        DropdownMenuItem(
                             text = { Text(if (archivedCount > 0) "Archived ($archivedCount)" else "Archived") },
                             leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
                             onClick = { menuOpen = false; onArchivedClick() }
@@ -90,6 +85,7 @@ fun HomeScreen(
                 }
             )
         },
+        bottomBar = { com.jagger.timer.nav.MainNavBar(com.jagger.timer.nav.Routes.HOME, onNavigate) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddPillClick) {
                 Icon(Icons.Default.Add, contentDescription = "Add Pill")

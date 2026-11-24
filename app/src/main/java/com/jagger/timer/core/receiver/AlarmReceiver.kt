@@ -45,6 +45,9 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_COOLDOWN_DONE = "com.jagger.timer.ACTION_COOLDOWN_DONE"
         const val ACTION_REFILL_DUE = "com.jagger.timer.ACTION_REFILL_DUE"
         const val ACTION_MISSED_CHECK = "com.jagger.timer.ACTION_MISSED_CHECK"
+        const val ACTION_TIMER_DONE = "com.jagger.timer.ACTION_TIMER_DONE"
+        const val TIMER_CHANNEL_ID = "timers"
+        const val EXTRA_TIMER_ID = "TIMER_ID"
 
         const val COOLDOWN_CHANNEL_ID = "dose_available"
         const val REFILL_CHANNEL_ID = "refill_reminders"
@@ -58,6 +61,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var pillRepository: PillRepository
     @Inject lateinit var alarmScheduler: AlarmScheduler
     @Inject lateinit var refillState: RefillState
+    @Inject lateinit var timerManager: com.jagger.timer.core.util.TimerManager
 
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
@@ -70,6 +74,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {
                         scheduleManager.refreshAlarms()
+                        timerManager.restoreAfterBoot().forEach { postTimerDoneNotification(context, it) }
                     } finally {
                         pendingResult.finish()
                     }
@@ -81,6 +86,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_SNOOZE -> handleSnoozeAction(context, pillId, scheduleId)
             ACTION_COOLDOWN_DONE -> handleCooldownDone(context, pillId)
             ACTION_REFILL_DUE -> handleRefillDue(context, pillId)
+            ACTION_TIMER_DONE -> handleTimerDone(context, intent.getLongExtra(EXTRA_TIMER_ID, -1L))
             ACTION_MISSED_CHECK -> handleMissedCheck(pillId, scheduleId, intent.getLongExtra(EXTRA_DUE_AT, 0L))
         }
     }
@@ -225,6 +231,48 @@ class AlarmReceiver : BroadcastReceiver() {
             .setContentIntent(open)
             .build()
         nm.notify(id, notification)
+    }
+
+    private fun handleTimerDone(context: Context, timerId: Long) {
+        if (timerId == -1L) return
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                timerManager.onAlarm(timerId)?.let { postTimerDoneNotification(context, it) }
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private fun postTimerDoneNotification(context: Context, timer: com.jagger.timer.core.data.local.entity.TimerEntity) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(TIMER_CHANNEL_ID, "Timers", NotificationManager.IMPORTANCE_HIGH)
+                .apply { description = "Tells you when a countdown timer finishes" }
+        )
+        val id = com.jagger.timer.core.util.AlarmNotificationIds.timer(timer.id)
+        val open = PendingIntent.getActivity(
+            context, id,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("route", "timers")
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val name = timer.label.ifBlank { "Timer" }
+        nm.notify(
+            id,
+            NotificationCompat.Builder(context, TIMER_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle("$name is done")
+                .setContentText("Your ${com.jagger.timer.core.util.TimerLogic.format(timer.durationMillis)} timer finished.")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build()
+        )
     }
 
     private fun postDoseAvailableNotification(context: Context, pill: PillEntity) {

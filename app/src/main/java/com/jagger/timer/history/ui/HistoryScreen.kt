@@ -46,7 +46,7 @@ import java.time.ZoneId
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HistoryScreen(
-    onNavigateBack: () -> Unit,
+    onNavigate: (String) -> Unit,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val rows by viewModel.rows.collectAsState()
@@ -60,14 +60,10 @@ fun HistoryScreen(
     val selectedPill = pills.firstOrNull { it.id == pillFilter }
 
     Scaffold(
+        bottomBar = { com.jagger.timer.nav.MainNavBar(com.jagger.timer.nav.Routes.HISTORY, onNavigate) },
         topBar = {
             TopAppBar(
-                title = { Text("History") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("History") }
             )
         }
     ) { innerPadding ->

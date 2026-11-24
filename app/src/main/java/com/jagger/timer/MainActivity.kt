@@ -21,6 +21,8 @@ import com.jagger.timer.add_pill.ui.PillFormScreen
 import com.jagger.timer.archive.ui.ArchivedScreen
 import com.jagger.timer.history.ui.HistoryScreen
 import com.jagger.timer.home.ui.HomeScreen
+import com.jagger.timer.nav.Routes
+import com.jagger.timer.timers.ui.TimersScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -41,17 +43,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             TimerTheme {
                 val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = "home") {
+                val goTop: (String) -> Unit = { route ->
+                    navController.navigate(route) {
+                        popUpTo(Routes.HOME) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+                NavHost(
+                    navController = navController,
+                    startDestination = if (intent?.getStringExtra("route") == Routes.TIMERS) Routes.TIMERS else Routes.HOME
+                ) {
+                    composable(Routes.TIMERS) { TimersScreen(onNavigate = goTop) }
                     composable("home") {
                         HomeScreen(
                             onAddPillClick = { navController.navigate("pill_form") },
                             onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") },
-                            onHistoryClick = { navController.navigate("history") },
+                            onNavigate = goTop,
                             onArchivedClick = { navController.navigate("archived") }
                         )
                     }
                     composable("history") {
-                        HistoryScreen(onNavigateBack = { navController.popBackStack() })
+                        HistoryScreen(onNavigate = goTop)
                     }
                     composable("archived") {
                         ArchivedScreen(onNavigateBack = { navController.popBackStack() })

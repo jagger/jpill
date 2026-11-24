@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ## [Unreleased]
 
 ### Added
+- **Timers.** A new Timers tab for general-purpose countdowns: label (optional), hours/minutes/seconds or a quick preset (1-60 min), pause, resume, restart, delete. A timer keeps running with the app closed, rings with a notification when it ends, and survives a reboot (overdue ones are marked done and notified at boot).
+- **Bottom navigation:** Medicines | Timers | History. History moved out of the Medicines menu (Archived stays there).
+- Database upgraded to version 5 (non-destructive: adds a `timers` table).
 - **Pill colors and icons.** Pick one of 12 colors and 12 icons in the medication form; both show on every card (scheduled and as-needed).
 - **Unit dropdown** (mg, ml, pill, IU, mcg, other) replaces the read-only unit field. A unit set by a catalog pick or strength chip (e.g. "g") still shows.
 
