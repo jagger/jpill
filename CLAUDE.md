@@ -171,11 +171,11 @@ Required permissions declared in manifest:
 - Add / edit pill form with Material3 `TimePicker`; schedule type picker (Fixed/Slot/Interval)
 - Home screen: upcoming dose timeline (next 24h) with Taken/Skip, FAB, empty state
 - As-needed OTC medicines: catalog search, dose limits, live cooldown countdown, Take now with early-dose confirm, "available again" notification
+- Dose history (M3): `history/ui/HistoryScreen` lists all logs (archived pills included) grouped by day with medication/status filters; `MissedDoseDetector` + a check alarm at due + grace log `MISSED` and re-plan the next dose; Home top-bar menu has History and Archived
 - Prescriptions (M2): Rx catalog + name list search, tablets per dose, supply tracking and refill reminder, food/timing notes, prescriber/pharmacy/Rx number, weekly day picker
 - Unit tests for `CooldownCalculator`, `SupplyCalculator`, `RxFormLogic`/`RefillPlanner`, catalogs and search, `formatCountdown`; instrumented tests for the v2 -> v3 migration and atomic supply decrement (run with `adb shell am instrument`, NOT `connectedAndroidTest`, which uninstalls the app and wipes its data)
 
 ### Not yet built
-- Dose history / log screen
 - General-purpose (non-pill) timers
 - Settings (time slot defaults, toggle for the "available again" notification)
 - Proper Material3 color theme (currently bare `MaterialTheme` wrapper)

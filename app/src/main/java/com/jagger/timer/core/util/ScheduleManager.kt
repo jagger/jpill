@@ -109,6 +109,11 @@ class ScheduleManager @Inject constructor(
                 val finalTrigger = if (reminderTime.isAfter(LocalDateTime.now())) reminderTime else it
                 
                 alarmScheduler.scheduleAlarm(pill, schedule, finalTrigger)
+
+                // If this dose is ignored, log it as missed after the grace window and re-plan the next one.
+                // Without this an ignored reminder would leave the schedule with no further alarms.
+                val dueAt = it.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                alarmScheduler.scheduleMissedCheck(pill.id, schedule.id, dueAt, dueAt + MissedDoseDetector.graceMillis(schedule))
             }
         }
     }
@@ -146,6 +151,7 @@ class ScheduleManager @Inject constructor(
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
         for (schedule in schedules) {
             alarmScheduler.cancelAlarm(schedule)
+            alarmScheduler.cancelMissedCheck(schedule.id)
         }
     }
 }

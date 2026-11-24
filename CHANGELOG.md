@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
+### Added
+- **Dose history screen.** Every logged dose across all medications, archived ones included (tagged), grouped by day with time, status and amount. Filter by medication and by status (Taken / Skipped / Missed).
+- **Missed-dose detection.** A check at due time plus a grace window (60 min, at most half of a short interval) logs `MISSED` if nothing was logged. Skips archived and as-needed medications; doses missed while the phone is off are not back-filled.
+- Home top-bar menu with **History** and **Archived**, always visible (Archived used to appear only once something was archived).
+
+### Fixed
+- An ignored reminder no longer silences the schedule: the missed check also plans the next dose. Before, nothing did until the next Taken/Skip/Snooze or a reboot.
+
 ## [0.2.0] - 2026-11-23
 
 ### Added
@@ -64,7 +74,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jagger/jpill/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jagger/jpill/compare/v0.0.3...v0.1.0
 [0.0.3]: https://github.com/jagger/jpill/compare/v0.0.1...v0.0.3

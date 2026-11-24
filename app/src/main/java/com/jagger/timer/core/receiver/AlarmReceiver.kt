@@ -8,6 +8,7 @@ import com.jagger.timer.MainActivity
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.util.CooldownCalculator
 import com.jagger.timer.core.util.CooldownStatus
+import com.jagger.timer.core.util.MissedDoseDetector
 import com.jagger.timer.core.util.RefillPlanner
 import com.jagger.timer.core.util.RefillState
 import com.jagger.timer.core.util.SupplyCalculator
@@ -43,12 +44,14 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_SNOOZE = "com.jagger.timer.ACTION_SNOOZE"
         const val ACTION_COOLDOWN_DONE = "com.jagger.timer.ACTION_COOLDOWN_DONE"
         const val ACTION_REFILL_DUE = "com.jagger.timer.ACTION_REFILL_DUE"
+        const val ACTION_MISSED_CHECK = "com.jagger.timer.ACTION_MISSED_CHECK"
 
         const val COOLDOWN_CHANNEL_ID = "dose_available"
         const val REFILL_CHANNEL_ID = "refill_reminders"
 
         const val EXTRA_PILL_ID = "PILL_ID"
         const val EXTRA_SCHEDULE_ID = "SCHEDULE_ID"
+        const val EXTRA_DUE_AT = "DUE_AT"
     }
 
     @Inject lateinit var scheduleManager: ScheduleManager
@@ -78,6 +81,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_SNOOZE -> handleSnoozeAction(context, pillId, scheduleId)
             ACTION_COOLDOWN_DONE -> handleCooldownDone(context, pillId)
             ACTION_REFILL_DUE -> handleRefillDue(context, pillId)
+            ACTION_MISSED_CHECK -> handleMissedCheck(pillId, scheduleId, intent.getLongExtra(EXTRA_DUE_AT, 0L))
         }
     }
 
@@ -122,6 +126,45 @@ class AlarmReceiver : BroadcastReceiver() {
                     // Fired early or the schedule changed: wait for the real time.
                     scheduleManager.refreshCooldownAlarm(pill)
                 }
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    /**
+     * A scheduled dose's grace window ended. If nothing was logged for the pill since it came due, record it as
+     * MISSED, then re-plan so the next dose is scheduled even though this reminder was ignored.
+     */
+    private fun handleMissedCheck(pillId: Long, scheduleId: Long, dueAt: Long) {
+        if (pillId == -1L || dueAt <= 0L) return
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                val pill = pillRepository.getPillById(pillId)
+                if (pill == null || pill.isArchived || pill.asNeeded) return@launch
+                val schedule = pillRepository.getSchedulesForPill(pillId).first().find { it.id == scheduleId }
+                    ?: return@launch
+                val logs = pillRepository.getLogsForPill(pillId).first()
+                if (MissedDoseDetector.shouldLogMissed(
+                        logTimestamps = logs.map { it.timestamp },
+                        dueAtMillis = dueAt,
+                        reminderAdvanceMinutes = schedule.reminderAdvanceMinutes,
+                        graceMillis = MissedDoseDetector.graceMillis(schedule),
+                        nowMillis = System.currentTimeMillis()
+                    )
+                ) {
+                    pillRepository.logDose(
+                        DoseLogEntity(
+                            pillId = pillId,
+                            scheduleId = scheduleId,
+                            timestamp = dueAt,
+                            status = DoseStatus.MISSED,
+                            amount = pill.doseAmount()
+                        )
+                    )
+                }
+                scheduleManager.refreshAlarmsForPill(pill)
             } finally {
                 pendingResult.finish()
             }
