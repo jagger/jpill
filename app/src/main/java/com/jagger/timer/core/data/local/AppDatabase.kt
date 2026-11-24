@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.jagger.timer.core.data.local.dao.PillDao
+import com.jagger.timer.core.data.local.dao.TimerDao
+import com.jagger.timer.core.data.local.entity.TimerEntity
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
@@ -13,15 +15,28 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
     entities = [
         PillEntity::class,
         ScheduleEntity::class,
-        DoseLogEntity::class
+        DoseLogEntity::class,
+        TimerEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun pillDao(): PillDao
+    abstract fun timerDao(): TimerDao
 
     companion object {
+        /** v4 -> v5: general-purpose countdown timers (new table only; nothing existing is touched). */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS timers (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "label TEXT NOT NULL, durationMillis INTEGER NOT NULL, state TEXT NOT NULL, " +
+                        "endAtMillis INTEGER, remainingMillis INTEGER, createdAt INTEGER NOT NULL)"
+                )
+            }
+        }
+
         /** v3 -> v4: archiving (hide a pill and stop reminders without deleting its history). */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
