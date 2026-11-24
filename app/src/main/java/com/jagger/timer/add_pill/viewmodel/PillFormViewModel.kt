@@ -51,6 +51,8 @@ data class PillFormUiState(
     val maxPer24h: Int? = null,
     val maxIsDoses: Boolean = false,
     val catalogId: String? = null,
+    /** Normalized active ingredients from the catalog pick (kept when editing). */
+    val ingredients: List<String> = emptyList(),
     // Prescription fields (text kept as typed; parsed on save)
     val isPrescription: Boolean = false,
     val tabletsText: String = "1",
@@ -116,6 +118,7 @@ class PillFormViewModel @Inject constructor(
                         maxPer24h = pill.maxPer24h,
                         maxIsDoses = pill.maxIsDoses,
                         catalogId = pill.catalogId,
+                        ingredients = com.jagger.timer.core.util.IngredientLogic.parse(pill.ingredients),
                         isPrescription = pill.isPrescription,
                         tabletsText = RxFormLogic.formatCount(pill.tabletsPerDose),
                         supplyText = pill.supplyCount?.let { s -> RxFormLogic.formatCount(s) } ?: "",
@@ -156,7 +159,8 @@ class PillFormViewModel @Inject constructor(
             minIntervalMinutes = med.minIntervalMinutes,
             maxPer24h = med.maxPer24h,
             maxIsDoses = med.maxIsDoses,
-            catalogId = med.id
+            catalogId = med.id,
+            ingredients = com.jagger.timer.core.util.IngredientLogic.normalize(med.ingredients)
         )
     }
     fun updateColor(color: Int) = _uiState.update { it.copy(color = color) }
@@ -201,6 +205,7 @@ class PillFormViewModel @Inject constructor(
                     val base = it.copy(
                         name = rx.genericName,
                         catalogId = rx.id,
+                        ingredients = com.jagger.timer.core.util.IngredientLogic.normalize(rx.ingredients),
                         isPrescription = true,
                         instructions = rx.instructions ?: "",
                         strengthOptions = rx.strengths,
@@ -229,6 +234,7 @@ class PillFormViewModel @Inject constructor(
                 it.copy(
                     name = result.genericName,
                     catalogId = null,
+                    ingredients = com.jagger.timer.core.util.IngredientLogic.normalize(result.ingredients),
                     isPrescription = true,
                     strengthOptions = result.strengths,
                     dosage = "",
@@ -283,6 +289,7 @@ class PillFormViewModel @Inject constructor(
                 maxPer24h = if (state.asNeeded) state.maxPer24h else null,
                 maxIsDoses = state.asNeeded && state.maxIsDoses,
                 catalogId = state.catalogId,
+                ingredients = com.jagger.timer.core.util.IngredientLogic.serialize(state.ingredients),
                 tabletsPerDose = RxFormLogic.parseTablets(state.tabletsText),
                 isPrescription = state.isPrescription,
                 supplyCount = if (state.isPrescription) RxFormLogic.parseSupply(state.supplyText) else null,

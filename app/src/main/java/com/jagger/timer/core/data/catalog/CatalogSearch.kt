@@ -55,7 +55,7 @@ object CatalogSearch {
             .map {
                 CatalogResult(
                     CatalogSource.OTC, it.genericName, it.brandNames, listOf("${it.defaultDose} ${it.unit}"),
-                    listOf(it.genericName.lowercase()), otc = it
+                    it.ingredients, otc = it
                 )
             }
 

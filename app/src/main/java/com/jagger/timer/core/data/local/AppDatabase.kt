@@ -18,7 +18,7 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
         DoseLogEntity::class,
         TimerEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +26,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun timerDao(): TimerDao
 
     companion object {
+        /** v5 -> v6: active ingredients on pills, for duplicate-ingredient warnings. Existing pills get none. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pills ADD COLUMN ingredients TEXT")
+            }
+        }
+
         /** v4 -> v5: general-purpose countdown timers (new table only; nothing existing is touched). */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {

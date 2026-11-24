@@ -13,6 +13,8 @@ import com.jagger.timer.core.data.model.TimelineEntry
 import com.jagger.timer.core.data.repository.PillRepository
 import com.jagger.timer.core.util.CooldownCalculator
 import com.jagger.timer.core.util.CooldownState
+import com.jagger.timer.core.util.IngredientLogic
+import com.jagger.timer.core.util.IngredientWarning
 import com.jagger.timer.core.util.ScheduleManager
 import com.jagger.timer.core.util.SupplyCalculator
 import com.jagger.timer.core.util.SupplyStatus
@@ -85,6 +87,26 @@ class HomeViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Duplicate-ingredient warnings by pill id: pills sharing an active ingredient, with the combined 24h total. */
+    val ingredientWarnings: StateFlow<Map<Long, IngredientWarning>> = pillRepository.getAllPills()
+        .flatMapLatest { all ->
+            val withIng = all.filter { IngredientLogic.parse(it.ingredients).isNotEmpty() }
+            if (withIng.size < 2) {
+                flowOf(emptyMap())
+            } else {
+                val since = System.currentTimeMillis() - CooldownCalculator.WINDOW_MILLIS
+                val logFlows = withIng.map { pillRepository.getTakenLogsSince(it.id, since) }
+                combine(combine(logFlows) { it.toList() }, ticker) { logsPerPill, now ->
+                    val doses = withIng.zip(logsPerPill).associate { (pill, logs) ->
+                        val fallback = pill.doseAmount() ?: 1.0
+                        pill.id to logs.map { TakenDose(it.timestamp, it.amount ?: fallback) }
+                    }
+                    IngredientLogic.warnings(withIng, doses, now)
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** How many archived pills exist (drives the Archived button on the home screen). */
     val archivedCount: StateFlow<Int> = pillRepository.getArchivedPills()
