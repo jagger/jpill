@@ -32,7 +32,7 @@ data class PillFormUiState(
     val name: String = "",
     val dosage: String = "",
     val unit: String = "mg",
-    val color: Int = 0xFF6200EE.toInt(),
+    val color: Int = com.jagger.timer.core.util.PillAppearance.defaultColor,
     val icon: String? = null,
     val scheduleType: ScheduleType = ScheduleType.FIXED_TIME,
     val recurrencePattern: RecurrencePattern = RecurrencePattern.DAILY,
@@ -159,6 +159,9 @@ class PillFormViewModel @Inject constructor(
             catalogId = med.id
         )
     }
+    fun updateColor(color: Int) = _uiState.update { it.copy(color = color) }
+    fun updateIcon(icon: String?) = _uiState.update { it.copy(icon = icon) }
+    fun updateUnit(unit: String) = _uiState.update { it.copy(unit = unit) }
     fun updateDosage(dosage: String) = _uiState.update { it.copy(dosage = dosage) }
     fun updateIsPrescription(v: Boolean) = _uiState.update { it.copy(isPrescription = v) }
     fun updateTablets(v: String) = _uiState.update { it.copy(tabletsText = v) }
