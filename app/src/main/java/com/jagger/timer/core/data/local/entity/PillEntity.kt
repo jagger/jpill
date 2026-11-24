@@ -52,5 +52,9 @@ data class PillEntity(
     /** Archived pills are hidden and stop all reminders, but keep their schedules and dose history. */
     @ColumnInfo(defaultValue = "0")
     val isArchived: Boolean = false,
-    val archivedAt: Long? = null
+    val archivedAt: Long? = null,
+
+    // --- Ingredients (DB v6) ---
+    /** Normalized active ingredients joined by "|" (e.g. "acetaminophen|dextromethorphan"); null = unknown. */
+    val ingredients: String? = null
 )

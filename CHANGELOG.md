@@ -5,7 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-24
+
 ### Added
+- **Duplicate-ingredient warning.** When two of your medicines share an active ingredient (Tylenol plus a cold medicine, both acetaminophen), both cards show a banner. Their doses over the last 24 hours are added together and counted against the lowest daily limit among them, in the same unit. If your next dose would pass that shared limit, "Take now" asks for confirmation. It warns only: logging is never blocked.
+- Database version 6 (non-destructive: nullable `ingredients` on pills). Medicines you added before this update have no ingredients; open one and re-pick it from the search to fill them in.
 - **Timers.** A new Timers tab for general-purpose countdowns: label (optional), hours/minutes/seconds or a quick preset (1-60 min), pause, resume, restart, delete. A timer keeps running with the app closed, rings with a notification when it ends, and survives a reboot (overdue ones are marked done and notified at boot).
 - **Bottom navigation:** Medicines | Timers | History. History moved out of the Medicines menu (Archived stays there).
 - Database upgraded to version 5 (non-destructive: adds a `timers` table).
@@ -81,7 +85,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.4.0
 [0.3.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jagger/jpill/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jagger/jpill/compare/v0.0.3...v0.1.0

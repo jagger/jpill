@@ -16,7 +16,9 @@ data class OtcMed(
     /** Rolling-24h cap. Meaning depends on [maxIsDoses]: dose count if true, else total in [unit]. */
     val maxPer24h: Int,
     val maxIsDoses: Boolean,
-    val notes: String? = null
+    val notes: String? = null,
+    /** Active ingredients (for duplicate-ingredient warnings). Defaults to the generic name. */
+    val ingredients: List<String> = listOf(genericName.lowercase())
 ) {
     /** Display name used when creating a pill, e.g. "Ibuprofen (Advil, Motrin)". */
     val displayName: String

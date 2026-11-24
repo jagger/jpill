@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxHeight
 import com.jagger.timer.core.data.catalog.OtcCatalog
 import com.jagger.timer.core.util.CooldownStatus
+import com.jagger.timer.core.util.IngredientLogic
+import com.jagger.timer.core.util.IngredientWarning
 import com.jagger.timer.core.util.formatCountdown
 import com.jagger.timer.home.viewmodel.AsNeededItem
 import com.jagger.timer.home.viewmodel.SupplyInfo
@@ -64,6 +67,7 @@ fun HomeScreen(
     val asNeeded by viewModel.asNeeded.collectAsState()
     val supply by viewModel.supply.collectAsState()
     val archivedCount by viewModel.archivedCount.collectAsState()
+    val warnings by viewModel.ingredientWarnings.collectAsState()
     var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
 
     Scaffold(
@@ -104,9 +108,10 @@ fun HomeScreen(
                     asNeeded = asNeeded,
                     hasScheduledPills = pills.size > asNeeded.size,
                     supply = supply,
+                    warnings = warnings,
                     entries = timeline,
                     onTakeNow = { item ->
-                        if (item.cooldown.status == CooldownStatus.READY) viewModel.takeNow(item.pill)
+                        if (item.cooldown.status == CooldownStatus.READY && warnings[item.pill.id]?.wouldExceed != true) viewModel.takeNow(item.pill)
                         else confirmEarly = item
                     },
                     onTaken = { viewModel.markAsTaken(it) },
@@ -119,8 +124,12 @@ fun HomeScreen(
 
     confirmEarly?.let { item ->
         val cd = item.cooldown
-        val reason = when (cd.status) {
-            CooldownStatus.AT_DAILY_MAX -> "You've reached the 24-hour maximum for ${item.pill.name}."
+        val shared = warnings[item.pill.id]?.takeIf { it.wouldExceed }
+        val reason = when {
+            cd.status == CooldownStatus.READY && shared != null ->
+                "Another medicine you take has the same ingredient. ${IngredientLogic.message(shared)} " +
+                    "This dose would go over the shared limit."
+            cd.status == CooldownStatus.AT_DAILY_MAX -> "You've reached the 24-hour maximum for ${item.pill.name}."
             else -> "It's been less than the recommended wait since your last dose of ${item.pill.name}."
         }
         AlertDialog(
@@ -128,7 +137,8 @@ fun HomeScreen(
             title = { Text("Take it early?") },
             text = {
                 Text(
-                    "$reason Next dose is due in ${formatCountdown(cd.millisUntilNext(item.nowMillis))}. " +
+                    reason + (if (cd.status == CooldownStatus.READY) " " else
+                        " Next dose is due in ${formatCountdown(cd.millisUntilNext(item.nowMillis))}. ") +
                         "Check your label or ask a pharmacist before taking more."
                 )
             },
@@ -150,6 +160,7 @@ fun HomeContent(
     hasScheduledPills: Boolean,
     supply: Map<Long, SupplyInfo>,
     entries: List<TimelineEntry>,
+    warnings: Map<Long, IngredientWarning> = emptyMap(),
     onTakeNow: (AsNeededItem) -> Unit,
     onTaken: (TimelineEntry) -> Unit,
     onSkip: (TimelineEntry) -> Unit,
@@ -165,6 +176,7 @@ fun HomeContent(
                 AsNeededCard(
                     item = item,
                     supply = supply[item.pill.id],
+                    warning = warnings[item.pill.id],
                     onTakeNow = { onTakeNow(item) },
                     onEdit = { onEdit(item.pill.id) }
                 )
@@ -204,6 +216,7 @@ fun HomeContent(
                 TimelineCard(
                     entry = entry,
                     supply = supply[entry.pill.id],
+                    warning = warnings[entry.pill.id],
                     onTaken = { onTaken(entry) },
                     onSkip = { onSkip(entry) },
                     onEdit = { onEdit(entry.pill.id) }
@@ -248,6 +261,7 @@ private fun SectionHeader(text: String) {
 fun AsNeededCard(
     item: AsNeededItem,
     supply: SupplyInfo?,
+    warning: IngredientWarning? = null,
     onTakeNow: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -283,6 +297,7 @@ fun AsNeededCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     RxInfoLines(pill.instructions, supply)
+                    IngredientBanner(warning)
                 }
                 IconButton(onClick = onEdit) {
                     Icon(
@@ -329,6 +344,7 @@ fun AsNeededCard(
 fun TimelineCard(
     entry: TimelineEntry,
     supply: SupplyInfo?,
+    warning: IngredientWarning? = null,
     onTaken: () -> Unit,
     onSkip: () -> Unit,
     onEdit: () -> Unit
@@ -362,6 +378,7 @@ fun TimelineCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     RxInfoLines(entry.pill.instructions, supply)
+                    IngredientBanner(warning)
                 }
                 
                 IconButton(onClick = onEdit) {
@@ -455,3 +472,28 @@ private fun PillBadge(pill: PillEntity) {
 
 private fun Modifier.androidx_background(color: androidx.compose.ui.graphics.Color): Modifier =
     this.then(Modifier.background(color, androidx.compose.foundation.shape.CircleShape))
+
+/** Heads-up that this medicine shares an active ingredient with another. Red once the shared 24h limit is reached or would be passed. */
+@Composable
+private fun IngredientBanner(warning: IngredientWarning?) {
+    if (warning == null) return
+    val bad = warning.atOrOver || warning.wouldExceed
+    androidx.compose.material3.Surface(
+        color = if (bad) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.padding(top = 6.dp)
+    ) {
+        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Warning, contentDescription = "Shared ingredient",
+                tint = if (bad) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                IngredientLogic.message(warning),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+    }
+}

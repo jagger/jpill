@@ -163,7 +163,7 @@ Required permissions declared in manifest:
 ## What's Built vs What's Next
 
 ### Done
-- Room DB (v5) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving, 4->5 timers
+- Room DB (v6) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving, 4->5 timers, 5->6 ingredients
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
 - Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification
@@ -173,7 +173,7 @@ Required permissions declared in manifest:
 - As-needed OTC medicines: catalog search, dose limits, live cooldown countdown, Take now with early-dose confirm, "available again" notification
 - Dose history (M3): `history/ui/HistoryScreen` lists all logs (archived pills included) grouped by day with medication/status filters; `MissedDoseDetector` + a check alarm at due + grace log `MISSED` and re-plan the next dose; Home top-bar menu has History and Archived
 - General timers (M5): `TimerEntity` (DB v5; RUNNING keeps `endAtMillis`, PAUSED keeps `remainingMillis`), pure `TimerLogic`, `TimerManager` (rows + one-shot `ACTION_TIMER_DONE` alarm per timer, re-armed or finished on boot), `timers/ui/TimersScreen`, bottom nav `nav/MainNavBar` (Medicines | Timers | History). Notification channel `timers`, ids via `AlarmNotificationIds.timer`
-- Prescriptions (M2): Rx catalog + name list search, tablets per dose, supply tracking and refill reminder, food/timing notes, prescriber/pharmacy/Rx number, weekly day picker
+- Duplicate ingredients (M6): `PillEntity.ingredients` (DB v6, normalized names joined by `|`, set from the catalog pick via `IngredientLogic.normalize`); pure `IngredientLogic.warnings` finds pills sharing an ingredient and sums their 24h TAKEN doses (same unit, or dose counts) against the lowest cap; `HomeViewModel.ingredientWarnings` -> banner on cards and the early-dose dialog. Warns only, never blocks. Pills created before v6 have no ingredients until re-picked from the catalog Rx catalog + name list search, tablets per dose, supply tracking and refill reminder, food/timing notes, prescriber/pharmacy/Rx number, weekly day picker
 - Unit tests for `CooldownCalculator`, `SupplyCalculator`, `RxFormLogic`/`RefillPlanner`, catalogs and search, `formatCountdown`; instrumented tests for the v2 -> v3 migration and atomic supply decrement (run with `adb shell am instrument`, NOT `connectedAndroidTest`, which uninstalls the app and wipes its data)
 
 ### Not yet built

@@ -112,3 +112,13 @@ class CatalogTest {
         assertFalse(fields.any { it.contains("max", true) || it.contains("interval", true) || it.contains("defaultDose", true) })
     }
 }
+
+class OtcIngredientsTest {
+    @org.junit.Test fun everyOtcEntryHasIngredientsAndAcetaminophenMatchesTylenol() {
+        com.jagger.timer.core.data.catalog.OtcCatalog.meds.forEach {
+            org.junit.Assert.assertTrue(it.id, it.ingredients.isNotEmpty())
+        }
+        val a = com.jagger.timer.core.data.catalog.OtcCatalog.meds.first { it.id == "acetaminophen" }
+        org.junit.Assert.assertEquals(listOf("acetaminophen"), com.jagger.timer.core.util.IngredientLogic.normalize(a.ingredients))
+    }
+}
