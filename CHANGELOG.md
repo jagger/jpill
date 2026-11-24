@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Pill colors and icons.** Pick one of 12 colors and 12 icons in the medication form; both show on every card (scheduled and as-needed).
+- **Unit dropdown** (mg, ml, pill, IU, mcg, other) replaces the read-only unit field. A unit set by a catalog pick or strength chip (e.g. "g") still shows.
+
 ## [0.3.0] - 2026-11-24
 
 ### Added

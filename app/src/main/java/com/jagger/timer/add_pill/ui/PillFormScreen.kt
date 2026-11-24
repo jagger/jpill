@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,6 +58,8 @@ import com.jagger.timer.core.util.RxFormLogic
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import com.jagger.timer.core.data.local.entity.ScheduleType
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.FilterChip
@@ -192,15 +195,19 @@ fun PillFormScreen(
                         supportingText = if (dosageInvalid) {{ Text("Use a number, e.g. 200") }} else null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
-                    OutlinedTextField(
-                        value = uiState.unit,
-                        onValueChange = { },
-                        label = { Text("Unit") },
-                        modifier = Modifier.weight(1f),
-                        readOnly = true,
-                        singleLine = true
+                    UnitDropdown(
+                        unit = uiState.unit,
+                        onUnit = { viewModel.updateUnit(it) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
+
+                AppearancePicker(
+                    color = uiState.color,
+                    icon = uiState.icon,
+                    onColor = { viewModel.updateColor(it) },
+                    onIcon = { viewModel.updateIcon(it) }
+                )
 
                 if (uiState.strengthOptions.isNotEmpty()) {
                     Text("Common strengths", style = MaterialTheme.typography.labelMedium)
@@ -694,4 +701,88 @@ fun formatTime(totalMinutes: Int): String {
         else -> hours
     }
     return "%d:%02d %s".format(displayHours, minutes, ampm)
+}
+
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun UnitDropdown(unit: String, onUnit: (String) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.material3.ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = unit,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text("Unit") },
+            trailingIcon = { androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            com.jagger.timer.core.util.PillAppearance.unitOptions(unit).forEach { u ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(u) },
+                    onClick = { onUnit(u); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun AppearancePicker(color: Int, icon: String?, onColor: (Int) -> Unit, onIcon: (String?) -> Unit) {
+    val selected = com.jagger.timer.core.util.PillAppearance.icon(icon)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Color", style = MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.jagger.timer.core.util.PillAppearance.colors.forEach { c ->
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(androidx.compose.ui.graphics.Color(c), androidx.compose.foundation.shape.CircleShape)
+                        .border(
+                            if (c == color) 3.dp else 0.dp,
+                            MaterialTheme.colorScheme.onSurface,
+                            androidx.compose.foundation.shape.CircleShape
+                        )
+                        .clickable { onColor(c) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (c == color) Icon(
+                        Icons.Default.Check, contentDescription = "Selected",
+                        tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+        Text("Icon", style = MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.jagger.timer.core.util.PillAppearance.icons.forEach { (name, vector) ->
+                val isSel = vector == selected
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(
+                            if (isSel) androidx.compose.ui.graphics.Color(color).copy(alpha = 0.2f)
+                            else androidx.compose.ui.graphics.Color.Transparent,
+                            androidx.compose.foundation.shape.CircleShape
+                        )
+                        .border(
+                            if (isSel) 2.dp else 1.dp,
+                            if (isSel) androidx.compose.ui.graphics.Color(color) else MaterialTheme.colorScheme.outlineVariant,
+                            androidx.compose.foundation.shape.CircleShape
+                        )
+                        .clickable { onIcon(name) },
+                    contentAlignment = Alignment.Center
+                ) { Icon(vector, contentDescription = name, tint = androidx.compose.ui.graphics.Color(color)) }
+            }
+        }
+    }
 }

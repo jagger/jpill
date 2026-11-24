@@ -1,5 +1,6 @@
 package com.jagger.timer.home.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -277,6 +278,7 @@ fun AsNeededCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                PillBadge(pill)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = pill.name, style = MaterialTheme.typography.titleLarge)
                     Text(
@@ -348,6 +350,7 @@ fun TimelineCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                PillBadge(entry.pill)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = entry.dueTime.format(timeFormatter),
@@ -438,3 +441,21 @@ fun EmptyState(onAddPillClick: () -> Unit) {
 fun HomeScreenPreview() {
     HomeScreen(onAddPillClick = {}, onEditPillClick = {})
 }
+
+/** The pill's chosen icon on a tint of its chosen color. */
+@Composable
+private fun PillBadge(pill: PillEntity) {
+    val c = androidx.compose.ui.graphics.Color(pill.color)
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .padding(end = 12.dp)
+            .size(44.dp)
+            .androidx_background(c.copy(alpha = 0.18f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(com.jagger.timer.core.util.PillAppearance.icon(pill.icon), contentDescription = null, tint = c)
+    }
+}
+
+private fun Modifier.androidx_background(color: androidx.compose.ui.graphics.Color): Modifier =
+    this.then(Modifier.background(color, androidx.compose.foundation.shape.CircleShape))
