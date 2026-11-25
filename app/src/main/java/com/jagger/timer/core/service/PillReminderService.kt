@@ -16,10 +16,15 @@ import androidx.core.app.NotificationCompat
 import com.jagger.timer.MainActivity
 import com.jagger.timer.core.receiver.AlarmReceiver
 import com.jagger.timer.core.receiver.safeNotificationId
+import com.jagger.timer.core.settings.AppSettings
+import com.jagger.timer.core.util.hideNameOnLockScreen
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class PillReminderService : Service() {
+
+    @Inject lateinit var appSettings: AppSettings
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -125,6 +130,10 @@ class PillReminderService : Service() {
             .addAction(0, "Taken", takenPendingIntent)
             .addAction(0, "Skip", skipPendingIntent)
             .addAction(0, "Snooze (10m)", snoozePendingIntent)
+            .hideNameOnLockScreen(
+                this, CHANNEL_ID, appSettings.hideNamesOnLockScreen,
+                listOf("Taken" to takenPendingIntent, "Skip" to skipPendingIntent, "Snooze (10m)" to snoozePendingIntent)
+            )
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

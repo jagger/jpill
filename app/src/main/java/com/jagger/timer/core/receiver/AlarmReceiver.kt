@@ -25,6 +25,8 @@ import com.jagger.timer.core.data.repository.PillRepository
 import com.jagger.timer.core.service.PillReminderService
 import com.jagger.timer.core.util.AlarmScheduler
 import com.jagger.timer.core.util.ScheduleManager
+import com.jagger.timer.core.settings.AppSettings
+import com.jagger.timer.core.util.hideNameOnLockScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +63,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var pillRepository: PillRepository
     @Inject lateinit var alarmScheduler: AlarmScheduler
     @Inject lateinit var refillState: RefillState
+    @Inject lateinit var appSettings: AppSettings
     @Inject lateinit var timerManager: com.jagger.timer.core.util.TimerManager
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -229,6 +232,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(open)
+            .hideNameOnLockScreen(context, REFILL_CHANNEL_ID, appSettings.hideNamesOnLockScreen)
             .build()
         nm.notify(id, notification)
     }
@@ -298,6 +302,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(open)
+            .hideNameOnLockScreen(context, COOLDOWN_CHANNEL_ID, appSettings.hideNamesOnLockScreen)
             .build()
         nm.notify(id, notification)
     }

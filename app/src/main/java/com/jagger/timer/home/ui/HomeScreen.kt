@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Warning
@@ -60,6 +61,7 @@ fun HomeScreen(
     onEditPillClick: (Long) -> Unit,
     onNavigate: (String) -> Unit = {},
     onArchivedClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -85,6 +87,11 @@ fun HomeScreen(
                             text = { Text(if (archivedCount > 0) "Archived ($archivedCount)" else "Archived") },
                             leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
                             onClick = { menuOpen = false; onArchivedClick() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Privacy") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            onClick = { menuOpen = false; onSettingsClick() }
                         )
                     }
                 }
