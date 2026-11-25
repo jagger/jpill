@@ -2,6 +2,7 @@
 package com.jagger.timer.core.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class TimerState { RUNNING, PAUSED, FINISHED }
@@ -10,7 +11,7 @@ enum class TimerState { RUNNING, PAUSED, FINISHED }
  * A general-purpose countdown timer (DB v5). While RUNNING the truth is [endAtMillis] (wall clock, so it survives
  * process death and reboot); while PAUSED it is [remainingMillis].
  */
-@Entity(tableName = "timers")
+@Entity(tableName = "timers", indices = [Index(value = ["nfcTagId"], unique = true)])
 data class TimerEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val label: String,
@@ -18,5 +19,7 @@ data class TimerEntity(
     val state: TimerState,
     val endAtMillis: Long? = null,
     val remainingMillis: Long? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Id on this timer's NFC sticker (DB v7); scanning it starts or restarts this timer. Null = no tag. */
+    val nfcTagId: String? = null
 )

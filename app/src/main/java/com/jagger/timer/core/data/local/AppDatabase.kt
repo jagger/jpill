@@ -19,7 +19,7 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
         DoseLogEntity::class,
         TimerEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +27,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun timerDao(): TimerDao
 
     companion object {
+        /** v6 -> v7: an optional NFC tag id per medicine and per timer (unique). Existing pills get none; nothing else is touched. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pills ADD COLUMN nfcTagId TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_pills_nfcTagId` ON `pills` (`nfcTagId`)")
+                db.execSQL("ALTER TABLE timers ADD COLUMN nfcTagId TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_timers_nfcTagId` ON `timers` (`nfcTagId`)")
+            }
+        }
+
         /** v5 -> v6: active ingredients on pills, for duplicate-ingredient warnings. Existing pills get none. */
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {

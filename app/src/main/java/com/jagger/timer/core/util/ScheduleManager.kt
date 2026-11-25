@@ -153,6 +153,9 @@ class ScheduleManager @Inject constructor(
      * Archives a pill: hides it and stops everything that would nag you (alarms, cooldown/refill alarms, posted
      * notifications). Schedules and dose history are kept so it can be restored later.
      */
+    /** Clears a pill's posted reminder notifications (e.g. after its dose was logged from an NFC scan). */
+    fun dismissReminder(pillId: Long) = alarmScheduler.cancelPillNotifications(pillId)
+
     suspend fun archivePill(pill: PillEntity) {
         cancelAlarmsForPill(pill)
         alarmScheduler.cancelPillNotifications(pill.id)

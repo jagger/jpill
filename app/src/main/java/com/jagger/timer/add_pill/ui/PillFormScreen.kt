@@ -279,6 +279,14 @@ fun PillFormScreen(
                 onPreset = { viewModel.addInstructionPreset(it) }
             )
 
+            com.jagger.timer.nfc.NfcTagPanel(
+                kind = com.jagger.timer.nfc.NfcTagKind.MEDICINE,
+                tagId = uiState.nfcTagId,
+                name = uiState.name,
+                findOwner = { viewModel.tagOwner(it) },
+                onTagChanged = { viewModel.setNfcTagId(it) }
+            )
+
             // As-needed toggle
             Row(
                 modifier = Modifier.fillMaxWidth().toggleable(

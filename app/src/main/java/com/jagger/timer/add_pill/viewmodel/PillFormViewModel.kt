@@ -63,6 +63,8 @@ data class PillFormUiState(
     val prescriber: String = "",
     val pharmacy: String = "",
     val rxNumber: String = "",
+    /** Id of the NFC tag stuck on this medicine, if any. */
+    val nfcTagId: String? = null,
     /** Strengths suggested by the picked catalog entry, shown as chips. */
     val strengthOptions: List<String> = emptyList()
 )
@@ -73,6 +75,7 @@ class PillFormViewModel @Inject constructor(
     private val pillRepository: PillRepository,
     private val scheduleManager: ScheduleManager,
     private val drugDataset: DrugDatasetSource,
+    private val tagDirectory: com.jagger.timer.nfc.NfcTagDirectory,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -95,6 +98,13 @@ class PillFormViewModel @Inject constructor(
         val pillId: Long? = savedStateHandle["pillId"]
         if (pillId != null && pillId != -1L) {
             loadPill(pillId)
+        } else {
+            // Arrived from an unlinked NFC tag: start a new medicine with its name and the tag already linked.
+            val tag: String? = savedStateHandle["tag"]
+            val name: String? = savedStateHandle["name"]
+            if (com.jagger.timer.nfc.NfcTagUri.isValidId(tag)) {
+                _uiState.update { it.copy(nfcTagId = tag, name = name.orEmpty()) }
+            }
         }
     }
 
@@ -128,6 +138,7 @@ class PillFormViewModel @Inject constructor(
                         prescriber = pill.prescriber.orEmpty(),
                         pharmacy = pill.pharmacy.orEmpty(),
                         rxNumber = pill.rxNumber.orEmpty(),
+                        nfcTagId = pill.nfcTagId,
                         scheduleType = schedule?.type ?: it.scheduleType,
                         recurrencePattern = schedule?.pattern ?: it.recurrencePattern,
                         timeMinutes = schedule?.timeMinutes ?: 480,
@@ -177,6 +188,10 @@ class PillFormViewModel @Inject constructor(
         _uiState.update { it.copy(instructions = com.jagger.timer.core.util.InstructionTags.toggle(it.instructions, phrase)) }
     fun updatePrescriber(v: String) = _uiState.update { it.copy(prescriber = v) }
     fun updatePharmacy(v: String) = _uiState.update { it.copy(pharmacy = v) }
+    /** Name of another medicine or timer that already owns [tagId], or null if it is free. */
+    suspend fun tagOwner(tagId: String): String? = tagDirectory.ownerName(tagId, exceptPillId = _uiState.value.pillId)
+
+    fun setNfcTagId(id: String?) = _uiState.update { it.copy(nfcTagId = id) }
     fun updateRxNumber(v: String) = _uiState.update { it.copy(rxNumber = v) }
     fun updateRecurrence(pattern: RecurrencePattern) = _uiState.update { it.copy(recurrencePattern = pattern) }
     fun toggleDay(day: Int) = _uiState.update {
@@ -298,7 +313,8 @@ class PillFormViewModel @Inject constructor(
                 instructions = state.instructions.trim().takeIf { it.isNotEmpty() },
                 prescriber = state.prescriber.trim().takeIf { state.isPrescription && it.isNotEmpty() },
                 pharmacy = state.pharmacy.trim().takeIf { state.isPrescription && it.isNotEmpty() },
-                rxNumber = state.rxNumber.trim().takeIf { state.isPrescription && it.isNotEmpty() }
+                rxNumber = state.rxNumber.trim().takeIf { state.isPrescription && it.isNotEmpty() },
+                nfcTagId = state.nfcTagId
             )
 
             if (state.asNeeded) {

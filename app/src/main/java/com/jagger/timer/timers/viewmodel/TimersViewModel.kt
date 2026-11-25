@@ -19,7 +19,10 @@ import javax.inject.Inject
 data class TimerItem(val timer: TimerEntity, val nowMillis: Long)
 
 @HiltViewModel
-class TimersViewModel @Inject constructor(private val manager: TimerManager) : ViewModel() {
+class TimersViewModel @Inject constructor(
+    private val manager: TimerManager,
+    private val tagDirectory: com.jagger.timer.nfc.NfcTagDirectory
+) : ViewModel() {
 
     private val ticker = flow { while (true) { emit(System.currentTimeMillis()); delay(500) } }
 
@@ -33,5 +36,7 @@ class TimersViewModel @Inject constructor(private val manager: TimerManager) : V
     fun pause(id: Long) = viewModelScope.launch { manager.pause(id) }
     fun resume(id: Long) = viewModelScope.launch { manager.resume(id) }
     fun restart(id: Long) = viewModelScope.launch { manager.restart(id) }
+    fun setNfcTag(id: Long, tagId: String?) = viewModelScope.launch { manager.setNfcTag(id, tagId) }
+    suspend fun tagOwner(tagId: String, timerId: Long): String? = tagDirectory.ownerName(tagId, exceptTimerId = timerId)
     fun delete(id: Long) = viewModelScope.launch { manager.delete(id) }
 }

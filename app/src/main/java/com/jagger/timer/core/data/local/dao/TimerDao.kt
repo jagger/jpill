@@ -19,6 +19,9 @@ interface TimerDao {
     @Query("SELECT * FROM timers WHERE id = :id")
     suspend fun getById(id: Long): TimerEntity?
 
+    @Query("SELECT * FROM timers WHERE nfcTagId = :tagId LIMIT 1")
+    suspend fun getByNfcTag(tagId: String): TimerEntity?
+
     @Insert
     suspend fun insert(timer: TimerEntity): Long
 

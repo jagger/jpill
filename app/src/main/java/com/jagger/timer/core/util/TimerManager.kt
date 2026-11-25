@@ -27,6 +27,22 @@ class TimerManager @Inject constructor(
         return id
     }
 
+    suspend fun getByNfcTag(tagId: String): TimerEntity? = dao.getByNfcTag(tagId)
+
+    /** Starts a new timer that owns [tagId] (a scanned tag whose timer does not exist yet, e.g. after a reinstall). */
+    suspend fun startFromTag(tagId: String, label: String, durationMillis: Long, now: Long = System.currentTimeMillis()): Long {
+        val t = TimerLogic.start(label, durationMillis, now).copy(nfcTagId = tagId)
+        val id = dao.insert(t)
+        alarms.scheduleTimerAlarm(id, t.endAtMillis!!)
+        return id
+    }
+
+    /** Points the timer at [tagId] (or clears it with null). The caller makes sure no other timer or medicine owns the id. */
+    suspend fun setNfcTag(id: Long, tagId: String?) {
+        val t = dao.getById(id) ?: return
+        dao.update(t.copy(nfcTagId = tagId))
+    }
+
     suspend fun pause(id: Long, now: Long = System.currentTimeMillis()) = change(id) { TimerLogic.pause(it, now) }
     suspend fun resume(id: Long, now: Long = System.currentTimeMillis()) = change(id) { TimerLogic.resume(it, now) }
     suspend fun restart(id: Long, now: Long = System.currentTimeMillis()) = change(id) { TimerLogic.restart(it, now) }

@@ -18,6 +18,8 @@ class PillRepository @Inject constructor(
 
     suspend fun getPillById(id: Long): PillEntity? = pillDao.getPillById(id)
 
+    suspend fun getPillByNfcTag(tagId: String): PillEntity? = pillDao.getPillByNfcTag(tagId)
+
     suspend fun savePillWithSchedule(pill: PillEntity, schedule: ScheduleEntity): Long =
         pillDao.savePillWithSchedule(pill, schedule)
 

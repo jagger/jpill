@@ -69,8 +69,13 @@ class MainActivity : FragmentActivity() {
     /** Set by a widget tap: open the early-dose confirmation for this as-needed medicine. */
     private var confirmPillId by mutableStateOf<Long?>(null)
 
+    /** Set by an NFC scan of a tag this phone does not know: open Add Medicine with the tag (and its name) filled in. */
+    private var prefill by mutableStateOf<Pair<String, String?>?>(null)
+
     companion object {
         const val EXTRA_CONFIRM_PILL_ID = "confirm_pill_id"
+        const val EXTRA_PREFILL_TAG = "prefill_tag"
+        const val EXTRA_PREFILL_NAME = "prefill_name"
     }
 
 
@@ -99,6 +104,13 @@ class MainActivity : FragmentActivity() {
                 }
             ) {
                 val navController = rememberNavController()
+                androidx.compose.runtime.LaunchedEffect(prefill, locked) {
+                    val p = prefill
+                    if (p != null && !locked) {
+                        prefill = null
+                        navController.navigate("pill_form?pillId=-1&tag=${p.first}&name=${android.net.Uri.encode(p.second.orEmpty())}")
+                    }
+                }
                 val goTop: (String) -> Unit = { route ->
                     navController.navigate(route) {
                         popUpTo(Routes.HOME) { saveState = true }
@@ -157,12 +169,14 @@ class MainActivity : FragmentActivity() {
                         ArchivedScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(
-                        route = "pill_form?pillId={pillId}",
+                        route = "pill_form?pillId={pillId}&tag={tag}&name={name}",
                         arguments = listOf(
                             navArgument("pillId") {
                                 type = NavType.LongType
                                 defaultValue = -1L
-                            }
+                            },
+                            navArgument("tag") { type = NavType.StringType; nullable = true; defaultValue = null },
+                            navArgument("name") { type = NavType.StringType; nullable = true; defaultValue = null }
                         )
                     ) {
                         PillFormScreen(
@@ -183,6 +197,7 @@ class MainActivity : FragmentActivity() {
     private fun readConfirmRequest(intent: android.content.Intent?) {
         val id = intent?.getLongExtra(EXTRA_CONFIRM_PILL_ID, -1L) ?: -1L
         if (id != -1L) confirmPillId = id
+        intent?.getStringExtra(EXTRA_PREFILL_TAG)?.let { prefill = it to intent.getStringExtra(EXTRA_PREFILL_NAME) }
     }
 
     override fun onStart() {

@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **NFC tags for medicines and timers.** Stick an NFC sticker on a medicine's lid (or on the washer) and tap your phone to it.
+  - **Medicines:** tapping opens a small confirm card (it never opens the whole app, so it works with the app lock on); confirming logs the dose. A scheduled dose inside the 2 hour early window counts toward that dose, anything else asks first; as-needed medicines follow the wait, daily-max and shared-ingredient rules with the same "take it early?" confirmation; a repeat scan of a dose already logged says so instead of logging twice.
+  - **Timers:** tapping starts that timer (for example "Washer, 45:00"); a running timer offers Restart, a paused one Resume.
+  - **Setting up a tag:** in a medicine's edit screen (NFC tag section) or from the NFC button on a timer, Write tag, Rewrite tag (reuses the same id, so a replacement sticker keeps working), Link existing tag (medicines), or Remove tag. It warns before overwriting a tag that already holds other data and verifies what it wrote.
+  - **What is on the tag:** a random id and the name (the medicine's name is optional per tag, a timer tag also holds its length), as one NFC link such as `jpill://timer/<id>?label=Washer&secs=2700`. Never a dose. Because timer tags are self-describing, scanning one on a fresh install or after deleting the timer recreates it.
+  - A tag jPill doesn't recognise (new phone) offers "Add as new medicine" with the name and the tag already filled in.
+  - Needs a phone with NFC; the app still works without it.
+- Database version 7 (non-destructive: an optional unique `nfcTagId` on medicines and on timers). Existing data is untouched.
+
 ## [0.7.0] - 2026-11-25
 
 ### Added
