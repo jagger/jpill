@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-24
+
 ### Added
 - **Settings menu.** The Home menu now opens Settings, with Appearance and Privacy and data under it.
 - **Theme choice** (Settings > Appearance): follow the phone, light or dark. The widget always follows the phone.
@@ -120,7 +122,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/jagger/jpill/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jagger/jpill/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/jagger/jpill/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/jagger/jpill/compare/v0.4.0...v0.4.1
