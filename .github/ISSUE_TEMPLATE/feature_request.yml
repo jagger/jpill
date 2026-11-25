@@ -1,0 +1,11 @@
+name: Feature request
+description: Suggest an idea
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like jPill to do?
+      description: Describe the problem you are trying to solve before the solution. Please keep real health details out of it.
+    validations:
+      required: true

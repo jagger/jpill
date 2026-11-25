@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.core.di
 
 import android.content.Context

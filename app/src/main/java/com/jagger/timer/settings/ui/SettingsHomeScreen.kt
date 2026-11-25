@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.settings.ui
 
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,7 +30,7 @@ import androidx.compose.ui.unit.dp
 /** The Settings hub: one row per group of options. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit) {
+fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit, onAbout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -42,6 +44,7 @@ fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onP
         Column(Modifier.padding(padding).fillMaxSize()) {
             SettingsRow(Icons.Default.Palette, "Appearance", "Light, dark or follow your phone", onAppearance)
             SettingsRow(Icons.Default.Lock, "Privacy and data", "App lock, lock-screen names, delete all data", onPrivacy)
+            SettingsRow(Icons.Default.Info, "About", "Version, project page, license, support jPill", onAbout)
         }
     }
 }

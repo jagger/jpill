@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.core.util
 
 /** Minute precision, rounded up: "2h 14m", "2h", "14m". Never shows less than "1m" while time remains. */

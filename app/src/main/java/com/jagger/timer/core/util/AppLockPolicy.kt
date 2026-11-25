@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.core.util
 
 /** When the app should ask to unlock. Pure, so it is unit-tested. */
