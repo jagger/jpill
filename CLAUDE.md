@@ -37,6 +37,14 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 - To release: move `[Unreleased]` entries under a new `[X.Y.Z] - date` heading, bump `appVersion`, update the compare links, merge via PR, then tag the merge commit `vX.Y.Z` and push the tag.
 - Bump MINOR for features, PATCH for fixes. Any Room schema change needs a `Migration` (never destructive) and a changelog note.
 
+## Release signing
+
+- Releases are signed with one long-lived key. The keystore and its passwords live **outside the repo**, in `~/.jpill-signing/` (`jpill-release.jks`, `keystore.properties`, mode 600). **Back that folder up somewhere safe** (e.g. a password manager). If the key is lost, nobody can install an update over an existing install: they would have to uninstall (losing data) and reinstall. Never commit the keystore or passwords; `.gitignore` covers `keystore.properties`, `*.jks`, `*.keystore`.
+- To build: copy `~/.jpill-signing/keystore.properties` to the project root as `keystore.properties` (gitignored), then run `tools/build_release.sh`. It builds with R8 (`isMinifyEnabled`, `isShrinkResources`), verifies the signature, writes `build/release/jpill-<version>.apk` and a `.sha256`, and prints the certificate fingerprint, which must equal the one in `README.md`.
+- Publishing a release: after the normal release steps (version bump PR, tag), attach both files: `gh release upload vX.Y.Z build/release/jpill-X.Y.Z.apk build/release/jpill-X.Y.Z.apk.sha256`.
+- A debug build (debug key) and a release build (project key) cannot be installed over each other; switching means uninstalling and losing app data. To test an upgrade without touching a real install, build both versions with a throwaway `applicationId` suffix (and `isDebuggable = true` if you need `run-as` to seed data), install the old one, then `adb install -r` the new one. Debuggable builds skip shrinking, so check R8 separately with a non-debuggable build.
+- Verified for 0.8.0: a release-signed update installs over the previous release and keeps data (including the v6 to v7 migration), and the shrunk build runs (Room, Hilt, assets, NFC screen).
+
 ## Open Source
 
 - Licensed **GPL-3.0-or-later**. `LICENSE` is the full GPLv3 text; `app/src/main/assets/LICENSE.txt` is a byte-for-byte copy shown in Settings > About > "Read the full license". `LicenseTextTest` fails if they drift apart, so update both together (you should never need to).

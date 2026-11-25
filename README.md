@@ -4,7 +4,7 @@ A private medication reminder and timer app for Android. Everything stays on you
 
 jPill reminds you when to take your medicines, logs every dose, keeps an eye on how much you can safely take, and tells you when a prescription is running low. It works without an account and makes no network connections.
 
-> **Status:** pre-1.0 and under active development. For now you install it by building from source; signed APKs are planned (see [roadmap](#roadmap)).
+> **Status:** pre-1.0 and under active development. Signed APKs for sideloading are attached to each [release](https://github.com/jagger/jpill/releases); see [Install](#install-on-your-phone).
 
 ## Features
 
@@ -20,7 +20,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 
 ## Privacy
 
-- **No network.** The app does not request the `INTERNET` permission, so it cannot send anything anywhere. There are no accounts, ads, analytics or crash reporters.
+- **No network.** The app does not request the `INTERNET` permission, so it cannot send anything anywhere. (Its manifest also lists `ACCESS_NETWORK_STATE`, which an AndroidX library adds; it only lets an app see whether a connection exists, not use it.) There are no accounts, ads, analytics or crash reporters.
 - **Your data lives on the device** in a local database. The app lock only guards the screen; the database itself is not encrypted beyond Android's own storage protection (reminders have to work while the app is locked, and keys tied to your fingerprint cannot be used by background alarms).
 - **Backups:** Android's automatic backup is allowed for the app. If you have device backup turned on, app data can be included in it, under the rules and encryption of your phone's backup service.
 - **NFC tags** carry a random id plus the medicine or timer name (the medicine name is optional per tag), readable by anyone with an NFC phone. They never carry a dose or any other detail.
@@ -30,6 +30,27 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 ## Medical disclaimer
 
 jPill is a personal organiser, **not a medical device**, and it does not give medical advice. Dose limits for over-the-counter medicines and the prescription catalog are informational, typical-adult values that have **not** all been verified against current labels. Always follow your medicine's label and your prescriber or pharmacist. Never rely on this app alone for anything where a missed or doubled dose could hurt you. See the licence for the warranty disclaimer.
+
+## Install on your phone
+
+jPill is not on an app store. Install it by sideloading the APK from the latest [release](https://github.com/jagger/jpill/releases):
+
+1. On your phone (Android 15 or newer), download `jpill-<version>.apk` from the release page.
+2. Open it. Android will ask you to allow installs from that app (your browser or file manager); allow it, then tap Install.
+3. Open jPill and allow notifications when asked, so reminders can appear.
+
+**Updating:** download the new APK and install it over the old one. Your medicines and history are kept, because every release is signed with the same key.
+
+**Check what you downloaded.** Each release has a `.sha256` file with the APK's checksum, and every APK is signed with the same certificate:
+
+```
+SHA-256 of the signing certificate:
+3527252d8290f901f5fa6dc8f80abd0dc2e91b768b9f6684faa0b68a6528ebaf
+```
+
+You can see yours with `apksigner verify --print-certs jpill-<version>.apk` (Android SDK build-tools). If the fingerprint is different, do not install it.
+
+**Switching from a build you made yourself:** a debug build you compiled has a different signature, so Android won't install the release APK over it. You would have to uninstall first, which deletes the app's data. Export what you need (History has a CSV share) before switching.
 
 ## Build from source
 
@@ -43,6 +64,8 @@ Requirements: a full JDK 17 (a JRE without `javac` will not do) and the Android 
 ```
 
 If Gradle picks a JRE, point it at a JDK: `JAVA_HOME=/path/to/jdk17 ./gradlew assembleDebug`. Gradle needs network access to fetch dependencies.
+
+A release build (`./gradlew assembleRelease`, shrunk with R8) is unsigned unless you provide your own `keystore.properties`; see [CLAUDE.md](CLAUDE.md). Release APKs from this project are signed with the project's key, so a build you sign yourself will not update an installed official release (and vice versa).
 
 > **Careful with instrumented tests.** `./gradlew connectedAndroidTest` uninstalls the app, which **wipes its data**. Only run it on an emulator or a spare device, never on a phone that holds real medicine data.
 
