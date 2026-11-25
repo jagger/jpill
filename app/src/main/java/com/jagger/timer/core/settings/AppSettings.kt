@@ -28,6 +28,14 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
         get() = _themeMode.value
         set(v) { prefs.edit().putString(KEY_THEME, v.name).apply(); _themeMode.value = v }
 
+    private val _nfcBeta = MutableStateFlow(prefs.getBoolean(KEY_NFC_BETA, false))
+    val nfcBetaFlow: StateFlow<Boolean> = _nfcBeta
+
+    /** Beta feature switch: NFC tags for medicines and timers. Off until the user opts in. */
+    var nfcBetaEnabled: Boolean
+        get() = _nfcBeta.value
+        set(v) { prefs.edit().putBoolean(KEY_NFC_BETA, v).apply(); _nfcBeta.value = v }
+
     val lockEnabledFlow: StateFlow<Boolean> = _lockEnabled
     val lockTimeoutFlow: StateFlow<Int> = _lockTimeoutSeconds
     val hideNamesFlow: StateFlow<Boolean> = _hideNames
@@ -49,6 +57,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
     companion object {
         const val DEFAULT_TIMEOUT_SECONDS = 60
         val TIMEOUT_CHOICES = listOf(0 to "Immediately", 30 to "After 30 seconds", 60 to "After 1 minute", 300 to "After 5 minutes", 900 to "After 15 minutes")
+        private const val KEY_NFC_BETA = "beta_nfc_tags"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_LOCK = "lock_enabled"
         private const val KEY_TIMEOUT = "lock_timeout_seconds"

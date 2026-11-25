@@ -13,6 +13,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 - **Prescriptions:** supply tracking and refill reminders, prescriber, pharmacy and Rx number, and food and timing tags ("With food", "Stay upright 30 min", "No heavy machinery").
 - **History:** every taken, skipped and missed dose, filterable, with CSV export through Android's share sheet.
 - **Timers:** general-purpose countdowns that keep running with the app closed.
+- **NFC tags (beta, off by default; Settings, Beta features):** stick a tag on a medicine lid and tap your phone to confirm a dose, or on the washer to start its timer. Tags hold only a random id and a name, never a dose.
 - **Home-screen widget:** wait times for as-needed medicines with a one-tap Take now.
 - **Privacy:** optional fingerprint, face or PIN app lock, an option to hide medicine names on the lock screen, and a Delete all data button.
 - **Looks:** dark and light themes, accessibility checked (contrast, 48 dp touch targets, TalkBack labels).
@@ -22,6 +23,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 - **No network.** The app does not request the `INTERNET` permission, so it cannot send anything anywhere. There are no accounts, ads, analytics or crash reporters.
 - **Your data lives on the device** in a local database. The app lock only guards the screen; the database itself is not encrypted beyond Android's own storage protection (reminders have to work while the app is locked, and keys tied to your fingerprint cannot be used by background alarms).
 - **Backups:** Android's automatic backup is allowed for the app. If you have device backup turned on, app data can be included in it, under the rules and encryption of your phone's backup service.
+- **NFC tags** carry a random id plus the medicine or timer name (the medicine name is optional per tag), readable by anyone with an NFC phone. They never carry a dose or any other detail.
 - **Share and export are manual.** Nothing leaves the phone unless you share a CSV yourself.
 - **Delete all data** (Settings, Privacy and data) wipes every medicine, dose, schedule and timer and cancels their reminders.
 
@@ -48,7 +50,7 @@ Architecture, data model and conventions are written up in [CLAUDE.md](CLAUDE.md
 
 ## Roadmap
 
-Open work is tracked in [issues](https://github.com/jagger/jpill/issues). Next up: NFC tags you stick on a medicine lid to confirm a dose with a tap, then distribution (signed releases). Releases and their notes are in [CHANGELOG.md](CHANGELOG.md).
+Open work is tracked in [issues](https://github.com/jagger/jpill/issues). Next up: distribution (signed releases). Releases and their notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Support
 

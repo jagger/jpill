@@ -45,6 +45,16 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 - About links (project page, issues, Ko-fi) live in `ProjectLinks` in `settings/ui/AboutScreen.kt`. `.github/FUNDING.yml` carries the same Ko-fi id.
 - Public-facing docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates. Keep real health data out of issues, tests, fixtures and screenshots.
 
+## NFC Tags
+
+- **Beta, off by default:** `AppSettings.nfcBetaEnabled` (Settings > Beta features). It hides the medicine-form NFC section and the timer NFC button, and `NfcScanActivity` just says tags are switched off. Remove the gate once tags are proven on real stickers.
+
+- `nfc/NfcPayload` (pure) is the tag format: `jpill://tag/<id>[?name=..]` for a medicine, `jpill://timer/<id>?label=..&secs=..` for a timer. `NfcTagUri` makes/validates the 128-bit random id. Never put a dose or other medicine detail on a tag.
+- `nfc/TagScanResolver` (pure) turns a scanned medicine into a `ScanDecision` (due / early / already taken / as-needed ready or early / archived / unknown) using `DoseCoverage` (2 h early window), `CooldownCalculator` and the shared-ingredient warning; `TimerScanResolver` does the same for timers. The user always confirms before anything is logged or started.
+- `nfc/NfcScanActivity` is exported with an `NDEF_DISCOVERED` filter for `jpill://tag` and `jpill://timer`; it shows a confirm card only (so it works over the lock screen and with the app lock on) and hides the medicine name on a locked screen when that setting is on. `NfcScanViewModel` logs through the normal `PillRepository.logDose` + `ScheduleManager.refreshAlarmsForPill` path.
+- `nfc/NfcTagIo` reads/writes NDEF in reader mode (foreground activity only); `nfc/NfcTagPanel` is the write/rewrite/link/remove UI used by the medicine form and the timer dialog. `NfcTagDirectory` keeps one sticker from being linked to two things.
+- DB v7 adds a nullable unique `nfcTagId` to `pills` and `timers` (`MIGRATION_6_7`). Test simulated scans without hardware: `adb shell "am start -a android.nfc.action.NDEF_DISCOVERED -d 'jpill://timer/<22-char-id>?label=Washer&secs=2700'"` (quote the URL for the device shell).
+
 ## Architecture
 
 MVVM with Android Architecture Components:
@@ -171,7 +181,7 @@ Required permissions declared in manifest:
 ## What's Built vs What's Next
 
 ### Done
-- Room DB (v6) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving, 4->5 timers, 5->6 ingredients
+- Room DB (v7) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving, 4->5 timers, 5->6 ingredients
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
 - Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification

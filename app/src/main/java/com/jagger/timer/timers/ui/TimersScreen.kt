@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -56,7 +57,9 @@ fun TimersScreen(
     viewModel: TimersViewModel = hiltViewModel()
 ) {
     val timers by viewModel.timers.collectAsState()
+    val nfcEnabled by viewModel.nfcEnabled.collectAsState()
     var showNew by remember { mutableStateOf(false) }
+    var nfcTimer by remember { mutableStateOf<Long?>(null) }
 
     Scaffold(
         topBar = { CenterAlignedTopAppBar(title = { Text("Timers", fontWeight = FontWeight.Bold) }) },
@@ -77,10 +80,28 @@ fun TimersScreen(
             LazyColumn(Modifier.padding(inner).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 items(timers, key = { it.timer.id }) { item ->
-                    TimerCard(item, viewModel::pause, viewModel::resume, viewModel::restart, viewModel::delete)
+                    TimerCard(item, viewModel::pause, viewModel::resume, viewModel::restart, viewModel::delete, onNfc = if (nfcEnabled) ({ nfcTimer = item.timer.id }) else null)
                 }
             }
         }
+    }
+
+    timers.firstOrNull { it.timer.id == nfcTimer }?.timer?.let { t ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { nfcTimer = null },
+            title = { Text(t.label.ifBlank { "Timer" }) },
+            text = {
+                com.jagger.timer.nfc.NfcTagPanel(
+                    kind = com.jagger.timer.nfc.NfcTagKind.TIMER,
+                    tagId = t.nfcTagId,
+                    name = t.label,
+                    timerSeconds = t.durationMillis / 1000,
+                    findOwner = { viewModel.tagOwner(it, t.id) },
+                    onTagChanged = { viewModel.setNfcTag(t.id, it) }
+                )
+            },
+            confirmButton = { TextButton(onClick = { nfcTimer = null }) { Text("Done") } }
+        )
     }
 
     if (showNew) NewTimerDialog(
@@ -92,7 +113,8 @@ fun TimersScreen(
 @Composable
 private fun TimerCard(
     item: TimerItem,
-    onPause: (Long) -> Unit, onResume: (Long) -> Unit, onRestart: (Long) -> Unit, onDelete: (Long) -> Unit
+    onPause: (Long) -> Unit, onResume: (Long) -> Unit, onRestart: (Long) -> Unit, onDelete: (Long) -> Unit,
+    onNfc: (() -> Unit)?
 ) {
     val t = item.timer
     // A RUNNING timer past its end shows as done right away, before the alarm updates the row.
@@ -120,6 +142,13 @@ private fun TimerCard(
                 done -> IconButton(onClick = { onRestart(t.id) }) { Icon(Icons.Default.Replay, contentDescription = "Restart") }
                 t.state == TimerState.PAUSED -> IconButton(onClick = { onResume(t.id) }) { Icon(Icons.Default.PlayArrow, contentDescription = "Resume") }
                 else -> IconButton(onClick = { onPause(t.id) }) { Icon(Icons.Default.Pause, contentDescription = "Pause") }
+            }
+            if (onNfc != null) IconButton(onClick = onNfc) {
+                Icon(
+                    Icons.Default.Nfc,
+                    contentDescription = if (t.nfcTagId != null) "NFC tag linked, manage tag" else "Add NFC tag",
+                    tint = if (t.nfcTagId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             IconButton(onClick = { onDelete(t.id) }) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
         }

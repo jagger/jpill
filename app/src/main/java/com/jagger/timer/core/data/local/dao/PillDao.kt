@@ -39,6 +39,10 @@ interface PillDao {
     @Query("UPDATE pills SET isArchived = :archived, archivedAt = :at WHERE id = :pillId")
     suspend fun setArchived(pillId: Long, archived: Boolean, at: Long?)
 
+    /** The medicine whose NFC sticker carries [tagId], archived ones included. */
+    @Query("SELECT * FROM pills WHERE nfcTagId = :tagId LIMIT 1")
+    suspend fun getPillByNfcTag(tagId: String): PillEntity?
+
     @Query("SELECT * FROM pills WHERE id = :id")
     suspend fun getPillById(id: Long): PillEntity?
 

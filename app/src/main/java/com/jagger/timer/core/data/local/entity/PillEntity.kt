@@ -3,6 +3,7 @@ package com.jagger.timer.core.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -11,7 +12,7 @@ import androidx.room.PrimaryKey
  */
 fun PillEntity.doseAmount(): Double? = dosage.trim().toDoubleOrNull()?.let { it * tabletsPerDose }
 
-@Entity(tableName = "pills")
+@Entity(tableName = "pills", indices = [Index(value = ["nfcTagId"], unique = true)])
 data class PillEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -57,5 +58,9 @@ data class PillEntity(
 
     // --- Ingredients (DB v6) ---
     /** Normalized active ingredients joined by "|" (e.g. "acetaminophen|dextromethorphan"); null = unknown. */
-    val ingredients: String? = null
+    val ingredients: String? = null,
+
+    // --- NFC tag (DB v7) ---
+    /** Random id written on this medicine's NFC sticker (see NfcTagUri); null = no tag. Unique across medicines. */
+    val nfcTagId: String? = null
 )
