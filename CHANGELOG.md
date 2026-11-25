@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Edit or delete a History entry.** Long-press a row in History to change its status (Taken, Skipped, Missed), date, time and amount, or delete it (with a confirmation). Supply stays right: deleting a taken dose, or changing it to something else, puts the tablets back on a medicine that tracks supply; changing a skipped or missed entry to Taken uses them. The medicine's reminders are re-planned afterwards.
+
+### Fixed
+- **Reminders vanished after updating the app.** Android cancels every alarm an app set when it is updated, and jPill only re-armed them after a reboot, so the first dose reminders after an update never fired. They are now re-armed right after an update, and when the clock or time zone changes.
+- **Tapping Taken twice logged two doses.** An identical Taken or Skipped log for the same medicine within 10 seconds is now treated as the same dose (also covers tapping the notification button and the app together).
+
 ## [0.9.1] - 2026-11-25
 
 ### Added
