@@ -132,6 +132,7 @@ class MainActivity : FragmentActivity() {
                             onNavigate = goTop,
                             onArchivedClick = { navController.navigate("archived") },
                             onSettingsClick = { navController.navigate("settings") },
+                            onReliabilityClick = { navController.navigate("settings/reliability") },
                             confirmPillId = confirmPillId,
                             onConfirmHandled = { confirmPillId = null }
                         )
@@ -145,11 +146,15 @@ class MainActivity : FragmentActivity() {
                             onAppearance = { navController.navigate("settings/appearance") },
                             onPrivacy = { navController.navigate("settings/privacy") },
                             onBeta = { navController.navigate("settings/beta") },
+                            onReliability = { navController.navigate("settings/reliability") },
                             onAbout = { navController.navigate("settings/about") }
                         )
                     }
                     composable("settings/appearance") {
                         AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/reliability") {
+                        com.jagger.timer.reliability.ReliabilityScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("settings/beta") {
                         com.jagger.timer.settings.ui.BetaScreen(onNavigateBack = { navController.popBackStack() })

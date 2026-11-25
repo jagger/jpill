@@ -36,6 +36,11 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
         get() = _nfcBeta.value
         set(v) { prefs.edit().putBoolean(KEY_NFC_BETA, v).apply(); _nfcBeta.value = v }
 
+    /** Until this time the Home "reminders may be late" banner stays hidden (set by "Not now"). */
+    var reliabilitySnoozedUntil: Long
+        get() = prefs.getLong(KEY_RELIABILITY_SNOOZE, 0L)
+        set(v) { prefs.edit().putLong(KEY_RELIABILITY_SNOOZE, v).apply() }
+
     val lockEnabledFlow: StateFlow<Boolean> = _lockEnabled
     val lockTimeoutFlow: StateFlow<Int> = _lockTimeoutSeconds
     val hideNamesFlow: StateFlow<Boolean> = _hideNames
@@ -58,6 +63,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
         const val DEFAULT_TIMEOUT_SECONDS = 60
         val TIMEOUT_CHOICES = listOf(0 to "Immediately", 30 to "After 30 seconds", 60 to "After 1 minute", 300 to "After 5 minutes", 900 to "After 15 minutes")
         private const val KEY_NFC_BETA = "beta_nfc_tags"
+        private const val KEY_RELIABILITY_SNOOZE = "reliability_snoozed_until"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_LOCK = "lock_enabled"
         private const val KEY_TIMEOUT = "lock_timeout_seconds"

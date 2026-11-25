@@ -23,10 +23,14 @@ You can switch **Allow from this source** off again afterwards.
 
 ## 3. Set it up so reminders arrive on time
 
-When jPill first opens it asks to send notifications: tap **Allow**. Then, because phones aggressively stop background apps:
+When jPill first opens it asks to send notifications: tap **Allow**.
 
-- **Battery:** Settings > Apps > jPill > Battery > **Unrestricted** (on Samsung also make sure jPill is not in *Sleeping apps* or *Deep sleeping apps*).
-- **Full-screen reminders (Android 14+):** Settings > Apps > Special app access > **Full screen notifications** > jPill > allow. Without it a reminder still shows as a notification, just not over the lock screen.
+Phones also delay or hide reminders to save battery, so **jPill checks for you**: if something is missing, Home shows a red banner ("Reminders may be late or missing...") with a **Fix** button, and **Settings > Reminder reliability** lists every check with a one-tap fix:
+
+- **Battery use:** tap **Allow** on the system prompt ("Allow jPill to always run in the background?").
+- **Full-screen reminders (Android 14+):** allow it so urgent reminders can open over the lock screen. Without it a reminder still appears as a notification.
+- **Notifications:** make sure they are on for jPill, including the "Pill Reminders" category.
+- **Samsung phones:** also open Settings > Battery > Background usage limits and make sure jPill is **not** in *Sleeping apps* or *Deep sleeping apps*. Android doesn't let jPill check or change these lists, so this one is up to you.
 - **Do Not Disturb:** reminders are alarms; if you use Do Not Disturb, allow alarms or make jPill an exception.
 
 ## 4. Check the download (optional but recommended)
@@ -57,7 +61,7 @@ Long-press the icon > **App info** > **Uninstall**. **This deletes all your jPil
 | *App not installed as package conflicts with an existing package* | The installed jPill was signed with a different key (for example a build you made yourself). Uninstall it first, which deletes its data (export a CSV first), then install again. |
 | *There was a problem parsing the package* or *App not compatible* | The download is incomplete, or the phone is older than Android 15. Download again and check the Android version. |
 | Install button greyed out or nothing happens | Allow **Install unknown apps** for the app you opened the file from (step 2). |
-| Reminders are late or missing | Do step 3: set Battery to Unrestricted and allow notifications. Open the app once after a restart. |
+| Reminders are late or missing | Do step 3: open **Settings > Reminder reliability** and fix anything marked. On Samsung also check the Sleeping apps lists. Open the app once after a restart. |
 | Not sure it is the real app | Do step 4. Only download from <https://github.com/jagger/jpill/releases>. |
 
 ## Beta features

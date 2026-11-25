@@ -14,6 +14,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 - **History:** every taken, skipped and missed dose, filterable, with CSV export through Android's share sheet.
 - **Timers:** general-purpose countdowns that keep running with the app closed.
 - **NFC tags (beta, off by default; Settings, Beta features):** stick a tag on a medicine lid and tap your phone to confirm a dose, or on the washer to start its timer. Tags hold only a random id and a name, never a dose.
+- **Reminder reliability check:** warns you, with one-tap fixes, if notifications, battery settings or alarms would make a reminder late.
 - **Home-screen widget:** wait times for as-needed medicines with a one-tap Take now.
 - **Privacy:** optional fingerprint, face or PIN app lock, an option to hide medicine names on the lock screen, and a Delete all data button.
 - **Looks:** dark and light themes, accessibility checked (contrast, 48 dp touch targets, TalkBack labels).
@@ -37,7 +38,7 @@ jPill is not on an app store. You sideload the APK from the latest [release](htt
 
 1. Download `jpill-<version>.apk` on your phone and open it.
 2. Allow installs from that app when Android asks, then tap **Install** (if Play Protect warns about an unknown developer, choose **Install anyway**).
-3. Open jPill and allow notifications, then set its battery use to **Unrestricted** so reminders arrive on time.
+3. Open jPill and allow notifications. If anything would delay reminders (battery use, full-screen reminders), jPill shows a banner with a **Fix** button and a checklist under Settings > Reminder reliability.
 
 **Full step-by-step guide, update and uninstall notes, and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).**
 

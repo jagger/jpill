@@ -64,6 +64,7 @@ fun HomeScreen(
     onNavigate: (String) -> Unit = {},
     onArchivedClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onReliabilityClick: () -> Unit = {},
     confirmPillId: Long? = null,
     onConfirmHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -76,6 +77,7 @@ fun HomeScreen(
     val archivedCount by viewModel.archivedCount.collectAsState()
     val warnings by viewModel.ingredientWarnings.collectAsState()
     var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
+    val reliability: com.jagger.timer.reliability.ReliabilityViewModel = hiltViewModel()
 
     // A widget tap on a medicine that isn't ready asks for the same confirmation as the Take now button.
     androidx.compose.runtime.LaunchedEffect(confirmPillId, asNeeded) {
@@ -141,7 +143,8 @@ fun HomeScreen(
                     },
                     onTaken = { viewModel.markAsTaken(it) },
                     onSkip = { viewModel.markAsSkipped(it) },
-                    onEdit = onEditPillClick
+                    onEdit = onEditPillClick,
+                    topContent = { com.jagger.timer.reliability.ReliabilityBanner(onFix = onReliabilityClick, viewModel = reliability) }
                 )
             }
         }
@@ -189,7 +192,8 @@ fun HomeContent(
     onTakeNow: (AsNeededItem) -> Unit,
     onTaken: (TimelineEntry) -> Unit,
     onSkip: (TimelineEntry) -> Unit,
-    onEdit: (Long) -> Unit
+    onEdit: (Long) -> Unit,
+    topContent: @Composable () -> Unit = {}
 ) {
     // One tile open at a time; kept across rotation.
     var expandedKey by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
@@ -198,6 +202,7 @@ fun HomeContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
     ) {
+        item(key = "reliability_banner") { topContent() }
         if (asNeeded.isNotEmpty()) {
             item(key = "as_needed_header") { SectionHeader("As Needed") }
             items(asNeeded, key = { "as_needed_${it.pill.id}" }) { item ->
