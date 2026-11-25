@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +32,7 @@ import androidx.compose.ui.unit.dp
 /** The Settings hub: one row per group of options. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit, onBeta: () -> Unit, onAbout: () -> Unit) {
+fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit, onBeta: () -> Unit, onReliability: () -> Unit, onAbout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -45,6 +46,7 @@ fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onP
         Column(Modifier.padding(padding).fillMaxSize()) {
             SettingsRow(Icons.Default.Palette, "Appearance", "Light, dark or follow your phone", onAppearance)
             SettingsRow(Icons.Default.Lock, "Privacy and data", "App lock, lock-screen names, delete all data", onPrivacy)
+            SettingsRow(Icons.Default.NotificationsActive, "Reminder reliability", "Check that notifications, battery and alarms let reminders arrive", onReliability)
             SettingsRow(Icons.Default.Science, "Beta features", "Try new features before they are finished (NFC tags)", onBeta)
             SettingsRow(Icons.Default.Info, "About", "Version, project page, license, support jPill", onAbout)
         }

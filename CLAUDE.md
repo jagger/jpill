@@ -53,6 +53,11 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 - About links (project page, issues, Ko-fi) live in `ProjectLinks` in `settings/ui/AboutScreen.kt`. `.github/FUNDING.yml` carries the same Ko-fi id.
 - Public-facing docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates. Keep real health data out of issues, tests, fixtures and screenshots.
 
+## Reminder reliability
+
+- `reliability/ReminderHealth` (pure, tested) models the four checks and the banner text; `ReminderHealthChecker` reads the phone (`areNotificationsEnabled` + the `pill_reminders` channel, `isIgnoringBatteryOptimizations`, `canUseFullScreenIntent`, `canScheduleExactAlarms`) and builds the fix intents (the system battery prompt needs `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). `ReliabilityViewModel` re-checks on every resume (`RefreshOnResume`) and stores the one-week "Not now" snooze in `AppSettings`.
+- UI: `ReliabilityBanner` is the first item in Home's list; `ReliabilityScreen` is Settings > Reminder reliability. Apps cannot flip these settings silently, only ask; Samsung's Sleeping/Deep sleeping lists have no API, so that tip is static text shown on Samsung devices.
+
 ## NFC Tags
 
 - **Beta, off by default:** `AppSettings.nfcBetaEnabled` (Settings > Beta features). It hides the medicine-form NFC section and the timer NFC button, and `NfcScanActivity` just says tags are switched off. Remove the gate once tags are proven on real stickers.

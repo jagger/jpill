@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Reminder reliability check.** jPill now checks the things that stop reminders arriving on time: notifications (including the reminder channel being switched off), battery use (unrestricted), full-screen reminders (Android 14+) and exact alarms. When something is missing, Home shows a dismissible banner ("Reminders may be late or missing: battery use isn't unrestricted") with a **Fix** button; "Not now" hides it for a week. **Settings > Reminder reliability** lists every check with a one-tap fix (the system's own "Allow jPill to always run in the background?" prompt for battery, the right Settings page for the rest). It re-checks when you come back from Settings. On Samsung phones it also reminds you to take jPill off the "Sleeping apps" lists, which Android gives no way to check. Adds the `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission (not a network permission; jPill still has no internet access).
+
 ## [0.8.1] - 2026-11-25
 
 ### Added
