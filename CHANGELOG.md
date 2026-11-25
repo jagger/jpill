@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-25
+
 ### Added
 - **"What's new" popup after an update.** The first time you open jPill after updating, a popup lists what changed since the version you last used (every version in between, newest first) and stays until you tap **Got it**. It reads the changelog bundled inside the app, so it works offline. Nothing is shown on a fresh install, and it waits behind the app lock if that is on. **Settings > About > What's new** shows the last five versions' notes any time. **Settings > About > What's new** shows the last five versions' notes any time.
 
@@ -191,7 +193,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/jagger/jpill/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/jagger/jpill/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/jagger/jpill/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/jagger/jpill/compare/v0.8.1...v0.9.0
