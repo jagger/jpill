@@ -7,7 +7,7 @@ plugins {
 }
 
 // Single source of truth for the app version (SemVer). Bump here, add a CHANGELOG.md entry, tag vX.Y.Z.
-val appVersion = "0.4.2"
+val appVersion = "0.5.0"
 
 android {
     namespace = "com.jagger.timer"

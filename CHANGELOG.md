@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-24
+
 ### Added
 - **Home-screen widget** (4x2, as-needed medicines). A thin ring per medicine in its own colour fills as the wait ends, with the ready time ("Ready at 9:41 PM") and a Take now button. A ready medicine is logged in one tap; one that is waiting, at its daily max or sharing an ingredient opens the app's early-dose confirmation. Redraws after every dose and when a wait ends.
 - **App lock.** Optional fingerprint / face / phone-PIN prompt when jPill opens (Home menu > Privacy), with a timing choice (immediately, 30 s, 1, 5 or 15 min). A cold start always asks. The recent-apps card hides your medicines while the lock is on, and the lock turns itself off if the phone's screen lock is removed so you can't be locked out.
@@ -108,7 +110,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/jagger/jpill/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/jagger/jpill/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/jagger/jpill/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.4.0
