@@ -25,13 +25,25 @@ interface PillDao {
      */
     @Query("""
         SELECT l.id AS logId, l.pillId AS pillId, p.name AS pillName, p.unit AS pillUnit, p.isArchived AS isArchived,
-               l.timestamp AS timestamp, l.status AS status, l.amount AS amount, l.note AS note
+               l.timestamp AS timestamp, l.status AS status, l.amount AS amount, l.note AS note,
+               l.scheduleId AS scheduleId
         FROM dose_logs l JOIN pills p ON p.id = l.pillId
         WHERE (:pillId = -1 OR l.pillId = :pillId) AND (:status = '' OR l.status = :status)
         ORDER BY l.timestamp DESC
         LIMIT :limit
     """)
     fun getHistory(pillId: Long, status: String, limit: Int): Flow<List<DoseHistoryRow>>
+
+    /** Every status since [sinceMillis] (for the 30-day adherence heatmap), newest first. */
+    @Query("""
+        SELECT l.id AS logId, l.pillId AS pillId, p.name AS pillName, p.unit AS pillUnit, p.isArchived AS isArchived,
+               l.timestamp AS timestamp, l.status AS status, l.amount AS amount, l.note AS note,
+               l.scheduleId AS scheduleId
+        FROM dose_logs l JOIN pills p ON p.id = l.pillId
+        WHERE (:pillId = -1 OR l.pillId = :pillId) AND l.timestamp >= :sinceMillis
+        ORDER BY l.timestamp DESC
+    """)
+    fun getHistorySince(pillId: Long, sinceMillis: Long): Flow<List<DoseHistoryRow>>
 
     @Query("SELECT * FROM pills WHERE isArchived = 1 ORDER BY archivedAt DESC")
     fun getArchivedPills(): Flow<List<PillEntity>>

@@ -13,5 +13,7 @@ data class DoseHistoryRow(
     val timestamp: Long,
     val status: DoseStatus,
     val amount: Double?,
-    val note: String?
+    val note: String?,
+    /** The schedule this dose belonged to; null for as-needed (and other off-schedule) doses. */
+    val scheduleId: Long? = null
 )

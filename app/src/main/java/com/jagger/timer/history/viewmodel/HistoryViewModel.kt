@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -28,6 +29,7 @@ class HistoryViewModel @Inject constructor(
     companion object {
         const val ALL_PILLS = -1L
         private const val LIMIT = 1000
+        const val HEATMAP_DAYS = 30
     }
 
     private val _pillFilter = MutableStateFlow(ALL_PILLS)
@@ -42,6 +44,17 @@ class HistoryViewModel @Inject constructor(
 
     val rows: StateFlow<List<DoseHistoryRow>> = combine(_pillFilter, _statusFilter) { p, s -> p to s }
         .flatMapLatest { (p, s) -> pillRepository.getHistory(p, s?.name ?: "", LIMIT) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Daily adherence for the last 30 days, for the heatmap. Follows the medication filter but not the status filter. */
+    val adherence: StateFlow<List<com.jagger.timer.core.util.DayAdherence>> = _pillFilter
+        .flatMapLatest { p ->
+            val zone = java.time.ZoneId.systemDefault()
+            val since = java.time.LocalDate.now(zone).minusDays(HEATMAP_DAYS - 1L).atStartOfDay(zone).toInstant().toEpochMilli()
+            pillRepository.getHistorySince(p, since).map { rows ->
+                com.jagger.timer.core.util.AdherenceCalc.last(HEATMAP_DAYS, rows, zone, java.time.LocalDate.now(zone))
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** CSV of everything the current filters match (not just the 1000 rows on screen). */
