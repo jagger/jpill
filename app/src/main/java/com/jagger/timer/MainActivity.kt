@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -32,7 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.jagger.timer.core.settings.AppSettings
 import com.jagger.timer.core.util.AppLockPolicy
-import com.jagger.timer.settings.ui.SettingsScreen
+import com.jagger.timer.settings.ui.AppearanceScreen
+import com.jagger.timer.settings.ui.PrivacyScreen
+import com.jagger.timer.settings.ui.SettingsHomeScreen
 import javax.inject.Inject
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -84,7 +87,14 @@ class MainActivity : FragmentActivity() {
         checkNotificationPermission()
 
         setContent {
-            com.jagger.timer.ui.theme.JPillTheme {
+            val themeMode by appSettings.themeModeFlow.collectAsState()
+            com.jagger.timer.ui.theme.JPillTheme(
+                darkTheme = when (themeMode) {
+                    com.jagger.timer.core.settings.ThemeMode.LIGHT -> false
+                    com.jagger.timer.core.settings.ThemeMode.DARK -> true
+                    com.jagger.timer.core.settings.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                }
+            ) {
                 val navController = rememberNavController()
                 val goTop: (String) -> Unit = { route ->
                     navController.navigate(route) {
@@ -115,7 +125,20 @@ class MainActivity : FragmentActivity() {
                         HistoryScreen(onNavigate = goTop)
                     }
                     composable("settings") {
-                        SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                        SettingsHomeScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onAppearance = { navController.navigate("settings/appearance") },
+                            onPrivacy = { navController.navigate("settings/privacy") }
+                        )
+                    }
+                    composable("settings/appearance") {
+                        AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/privacy") {
+                        PrivacyScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onDataErased = { navController.popBackStack(Routes.HOME, inclusive = false) }
+                        )
                     }
                     composable("archived") {
                         ArchivedScreen(onNavigateBack = { navController.popBackStack() })

@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Warning
@@ -105,8 +105,8 @@ fun HomeScreen(
                             onClick = { menuOpen = false; onArchivedClick() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Privacy") },
-                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            text = { Text("Settings") },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                             onClick = { menuOpen = false; onSettingsClick() }
                         )
                     }
