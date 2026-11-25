@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -41,6 +42,12 @@ class HistoryViewModel @Inject constructor(
     val rows: StateFlow<List<DoseHistoryRow>> = combine(_pillFilter, _statusFilter) { p, s -> p to s }
         .flatMapLatest { (p, s) -> pillRepository.getHistory(p, s?.name ?: "", LIMIT) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** CSV of everything the current filters match (not just the 1000 rows on screen). */
+    suspend fun exportCsv(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
+        val all = pillRepository.getHistory(_pillFilter.value, _statusFilter.value?.name ?: "", Int.MAX_VALUE).first()
+        return com.jagger.timer.core.util.HistoryCsv.build(all, zone)
+    }
 
     fun setPillFilter(pillId: Long) { _pillFilter.value = pillId }
     fun setStatusFilter(status: DoseStatus?) { _statusFilter.value = status }

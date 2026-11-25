@@ -190,6 +190,9 @@ fun HomeContent(
     onSkip: (TimelineEntry) -> Unit,
     onEdit: (Long) -> Unit
 ) {
+    // One tile open at a time; kept across rotation.
+    var expandedKey by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    fun toggle(key: String) { expandedKey = if (expandedKey == key) null else key }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
@@ -197,10 +200,12 @@ fun HomeContent(
         if (asNeeded.isNotEmpty()) {
             item(key = "as_needed_header") { SectionHeader("As Needed") }
             items(asNeeded, key = { "as_needed_${it.pill.id}" }) { item ->
-                AsNeededCard(
+                AsNeededTile(
                     item = item,
                     supply = supply[item.pill.id],
                     warning = warnings[item.pill.id],
+                    expanded = expandedKey == "n${item.pill.id}",
+                    onToggle = { toggle("n${item.pill.id}") },
                     onTakeNow = { onTakeNow(item) },
                     onEdit = { onEdit(item.pill.id) }
                 )
@@ -236,39 +241,20 @@ fun HomeContent(
                 }
             }
         } else {
-            items(entries) { entry ->
-                TimelineCard(
+            items(entries, key = { "t${it.pill.id}_${it.schedule.id}" }) { entry ->
+                val key = "t${entry.pill.id}_${entry.schedule.id}"
+                TimelineTile(
                     entry = entry,
                     supply = supply[entry.pill.id],
                     warning = warnings[entry.pill.id],
+                    expanded = expandedKey == key,
+                    onToggle = { toggle(key) },
                     onTaken = { onTaken(entry) },
                     onSkip = { onSkip(entry) },
                     onEdit = { onEdit(entry.pill.id) }
                 )
             }
         }
-    }
-}
-
-/** Food/timing note and supply line for prescriptions. Shows nothing for pills without either. */
-@Composable
-private fun RxInfoLines(instructions: String?, supply: SupplyInfo?) {
-    if (!instructions.isNullOrBlank()) {
-        Text(
-            text = instructions,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    if (supply != null) {
-        val left = RxFormLogic.formatCount(supply.supply)
-        val days = supply.daysLeft?.let { "about ${Math.ceil(it).toInt()} days" }
-        val (text, color) = when (supply.status) {
-            SupplyStatus.EMPTY -> "Out of pills. Time to refill" to MaterialTheme.colorScheme.error
-            SupplyStatus.LOW -> "Low: refill soon. $left left" + (days?.let { ", $it" } ?: "") to MaterialTheme.colorScheme.error
-            SupplyStatus.OK -> "$left left" + (days?.let { ", $it" } ?: "") to MaterialTheme.colorScheme.onSurfaceVariant
-        }
-        Text(text = text, style = MaterialTheme.typography.bodySmall, color = color)
     }
 }
 
@@ -279,181 +265,6 @@ private fun SectionHeader(text: String) {
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )
-}
-
-@Composable
-fun AsNeededCard(
-    item: AsNeededItem,
-    supply: SupplyInfo?,
-    warning: IngredientWarning? = null,
-    onTakeNow: () -> Unit,
-    onEdit: () -> Unit
-) {
-    val pill = item.pill
-    val cd = item.cooldown
-    val now = item.nowMillis
-    val ready = cd.status == CooldownStatus.READY
-
-    val statusText = when (cd.status) {
-        CooldownStatus.READY -> "Ready"
-        CooldownStatus.WAITING -> "Next dose in ${formatCountdown(cd.millisUntilNext(now))}"
-        CooldownStatus.AT_DAILY_MAX -> "Daily max reached. Next in ${formatCountdown(cd.millisUntilNext(now))}"
-    }
-    val usage = pill.maxPer24h?.let { max ->
-        if (pill.maxIsDoses) "${cd.dosesIn24h} of $max doses in last 24h"
-        else "${cd.amountIn24h.toInt()} of $max ${pill.unit} in last 24h"
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PillBadge(pill)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = pill.name, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = RxFormLogic.doseLabel(pill),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    RxInfoLines(pill.instructions, supply)
-                    IngredientBanner(warning)
-                }
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Pill",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = statusText,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = when (cd.status) {
-                    CooldownStatus.READY -> MaterialTheme.colorScheme.primary
-                    CooldownStatus.WAITING -> MaterialTheme.colorScheme.onSurface
-                    CooldownStatus.AT_DAILY_MAX -> MaterialTheme.colorScheme.error
-                }
-            )
-            usage?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            }
-            Spacer(Modifier.width(8.dp))
-            val buttonContent: @Composable () -> Unit = {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Take now")
-            }
-            if (ready) {
-                Button(onClick = onTakeNow, content = { buttonContent() })
-            } else {
-                FilledTonalButton(onClick = onTakeNow, content = { buttonContent() })
-            }
-            }
-        }
-    }
-}
-
-@Composable
-fun TimelineCard(
-    entry: TimelineEntry,
-    supply: SupplyInfo?,
-    warning: IngredientWarning? = null,
-    onTaken: () -> Unit,
-    onSkip: () -> Unit,
-    onEdit: () -> Unit
-) {
-    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
-    
-    val handled = entry.isHandled
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp)
-            .then(if (handled) Modifier.alpha(0.5f) else Modifier),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PillBadge(entry.pill)
-                Column(modifier = Modifier.weight(1f)) {
-                    if (handled) {
-                        val verb = if (entry.handledStatus == com.jagger.timer.core.data.local.entity.DoseStatus.SKIPPED) "Skipped" else "Taken"
-                        val at = java.time.Instant.ofEpochMilli(entry.handledAt ?: 0L)
-                            .atZone(java.time.ZoneId.systemDefault()).format(timeFormatter)
-                        Text(
-                            text = "$verb at $at",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(text = entry.pill.name, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = entry.dueTime.format(timeFormatter) + "  ·  " + RxFormLogic.doseLabel(entry.pill),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    RxInfoLines(entry.pill.instructions, supply)
-                    IngredientBanner(warning)
-                }
-                
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Pill",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = onSkip,
-                    enabled = !handled,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) {
-                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Skip")
-                }
-                Button(
-                    onClick = onTaken,
-                    enabled = !handled,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Taken")
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -495,7 +306,7 @@ fun HomeScreenPreview() {
 
 /** The pill's chosen icon on a tint of its chosen color. */
 @Composable
-private fun PillBadge(pill: PillEntity) {
+internal fun PillBadge(pill: PillEntity) {
     val c = androidx.compose.ui.graphics.Color(pill.color)
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
@@ -517,7 +328,7 @@ private fun Modifier.androidx_background(color: androidx.compose.ui.graphics.Col
 
 /** Heads-up that this medicine shares an active ingredient with another. Red once the shared 24h limit is reached or would be passed. */
 @Composable
-private fun IngredientBanner(warning: IngredientWarning?) {
+internal fun IngredientBanner(warning: IngredientWarning?) {
     if (warning == null) return
     val bad = warning.atOrOver || warning.wouldExceed
     androidx.compose.material3.Surface(

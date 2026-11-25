@@ -260,19 +260,23 @@ fun PillFormScreen(
                 PrescriptionSection(
                     supply = uiState.supplyText,
                     refillDays = uiState.refillDaysText,
-                    instructions = uiState.instructions,
                     prescriber = uiState.prescriber,
                     pharmacy = uiState.pharmacy,
                     rxNumber = uiState.rxNumber,
                     onSupply = { viewModel.updateSupply(it) },
                     onRefillDays = { viewModel.updateRefillDays(it) },
-                    onInstructions = { viewModel.updateInstructions(it) },
-                    onPreset = { viewModel.addInstructionPreset(it) },
                     onPrescriber = { viewModel.updatePrescriber(it) },
                     onPharmacy = { viewModel.updatePharmacy(it) },
                     onRxNumber = { viewModel.updateRxNumber(it) }
                 )
             }
+
+            // Food and timing tags: for every medicine, not just prescriptions
+            NotesSection(
+                instructions = uiState.instructions,
+                onInstructions = { viewModel.updateInstructions(it) },
+                onPreset = { viewModel.addInstructionPreset(it) }
+            )
 
             // As-needed toggle
             Row(
@@ -528,17 +532,42 @@ private fun CommonMedicinePicker(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+private fun NotesSection(instructions: String, onInstructions: (String) -> Unit, onPreset: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Food and Timing Notes", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "Shown as tags on the medicine's card.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            com.jagger.timer.core.util.InstructionTags.PRESETS.forEach { phrase ->
+                FilterChip(
+                    selected = com.jagger.timer.core.util.InstructionTags.has(instructions, phrase),
+                    onClick = { onPreset(phrase) },
+                    label = { Text(phrase) }
+                )
+            }
+        }
+        OutlinedTextField(
+            value = instructions,
+            onValueChange = onInstructions,
+            label = { Text("Notes") },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
 private fun PrescriptionSection(
     supply: String,
     refillDays: String,
-    instructions: String,
     prescriber: String,
     pharmacy: String,
     rxNumber: String,
     onSupply: (String) -> Unit,
     onRefillDays: (String) -> Unit,
-    onInstructions: (String) -> Unit,
-    onPreset: (String) -> Unit,
     onPrescriber: (String) -> Unit,
     onPharmacy: (String) -> Unit,
     onRxNumber: (String) -> Unit
@@ -567,23 +596,6 @@ private fun PrescriptionSection(
             "Leave tablets on hand empty to skip supply tracking. After a refill, edit this pill and enter the new count.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text("Food and Timing Notes", style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            RxFormLogic.INSTRUCTION_PRESETS.forEach { phrase ->
-                FilterChip(
-                    selected = instructions.contains(phrase, ignoreCase = true),
-                    onClick = { onPreset(phrase) },
-                    label = { Text(phrase) }
-                )
-            }
-        }
-        OutlinedTextField(
-            value = instructions,
-            onValueChange = onInstructions,
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth()
         )
 
         Text("Prescription Details", style = MaterialTheme.typography.titleSmall)
