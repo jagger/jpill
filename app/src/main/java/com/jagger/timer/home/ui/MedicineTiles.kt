@@ -37,6 +37,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import com.jagger.timer.core.util.TextSegment
+import com.jagger.timer.core.util.LinkText
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jagger.timer.core.data.local.entity.DoseStatus
@@ -251,6 +259,17 @@ private fun Tag(text: String) {
 
 @Composable
 private fun InfoLine(label: String?, value: String, error: Boolean = false) {
+    val textColor = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val linkStyle = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline))
+    // Web addresses (e.g. a pharmacy's refill page) are tappable here; they stay plain text while editing.
+    val shown = buildAnnotatedString {
+        LinkText.segments(value).forEach { seg ->
+            when (seg) {
+                is TextSegment.Plain -> append(seg.text)
+                is TextSegment.Link -> withLink(LinkAnnotation.Url(seg.url, linkStyle)) { append(seg.text) }
+            }
+        }
+    }
     Row {
         if (label != null) Text(
             label,
@@ -259,10 +278,10 @@ private fun InfoLine(label: String?, value: String, error: Boolean = false) {
             modifier = Modifier.padding(end = 8.dp)
         )
         Text(
-            value,
+            shown,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = if (label != null) FontWeight.Medium else FontWeight.Normal,
-            color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            color = textColor
         )
     }
 }

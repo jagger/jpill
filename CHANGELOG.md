@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Tappable web addresses in a medicine's details.** A website in the Doctor, Rx number or Pharmacy field (for example your pharmacy's refill page: `https://...`, `www....`, or `example.com/refill`) is underlined and opens in your browser when you tap it in the expanded medicine card. While editing it stays plain text. Only http and https links are ever made tappable.
+
 ## [0.9.0] - 2026-11-25
 
 ### Added
