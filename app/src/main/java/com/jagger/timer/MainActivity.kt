@@ -60,6 +60,13 @@ class MainActivity : FragmentActivity() {
     private var backgroundedAt: Long? = null
     private var prompting = false
 
+    /** Set by a widget tap: open the early-dose confirmation for this as-needed medicine. */
+    private var confirmPillId by mutableStateOf<Long?>(null)
+
+    companion object {
+        const val EXTRA_CONFIRM_PILL_ID = "confirm_pill_id"
+    }
+
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -70,13 +77,14 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        readConfirmRequest(intent)
         // Don't let the recent-apps card show medicines while the lock is on.
         setRecentsScreenshotEnabled(!appSettings.lockEnabled)
 
         checkNotificationPermission()
 
         setContent {
-            TimerTheme {
+            com.jagger.timer.ui.theme.JPillTheme {
                 val navController = rememberNavController()
                 val goTop: (String) -> Unit = { route ->
                     navController.navigate(route) {
@@ -98,7 +106,9 @@ class MainActivity : FragmentActivity() {
                             onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") },
                             onNavigate = goTop,
                             onArchivedClick = { navController.navigate("archived") },
-                            onSettingsClick = { navController.navigate("settings") }
+                            onSettingsClick = { navController.navigate("settings") },
+                            confirmPillId = confirmPillId,
+                            onConfirmHandled = { confirmPillId = null }
                         )
                     }
                     composable("history") {
@@ -126,6 +136,17 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readConfirmRequest(intent)
+    }
+
+    private fun readConfirmRequest(intent: android.content.Intent?) {
+        val id = intent?.getLongExtra(EXTRA_CONFIRM_PILL_ID, -1L) ?: -1L
+        if (id != -1L) confirmPillId = id
     }
 
     override fun onStart() {
@@ -185,13 +206,6 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-@Composable
-fun TimerTheme(content: @Composable () -> Unit) {
-    // Basic theme wrapper
-    androidx.compose.material3.MaterialTheme(
-        content = content
-    )
-}
 
 
 @Composable

@@ -64,6 +64,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var alarmScheduler: AlarmScheduler
     @Inject lateinit var refillState: RefillState
     @Inject lateinit var appSettings: AppSettings
+    @Inject lateinit var widgetRefresher: com.jagger.timer.widget.WidgetRefresher
     @Inject lateinit var timerManager: com.jagger.timer.core.util.TimerManager
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -131,6 +132,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val cooldown = CooldownCalculator.forPill(pill, logs, now)
                 if (cooldown.status == CooldownStatus.READY) {
                     postDoseAvailableNotification(context, pill)
+                    widgetRefresher.update()
                 } else {
                     // Fired early or the schedule changed: wait for the real time.
                     scheduleManager.refreshCooldownAlarm(pill)
@@ -154,11 +156,12 @@ class AlarmReceiver : BroadcastReceiver() {
                 if (pill == null || pill.isArchived || pill.asNeeded) return@launch
                 val schedule = pillRepository.getSchedulesForPill(pillId).first().find { it.id == scheduleId }
                     ?: return@launch
-                val logs = pillRepository.getLogsForPill(pillId).first()
+                // Only this schedule's logs count, and a dose taken up to 2h early still handles it.
+                val logs = pillRepository.getLogsForPill(pillId).first().filter { it.scheduleId == scheduleId }
                 if (MissedDoseDetector.shouldLogMissed(
                         logTimestamps = logs.map { it.timestamp },
                         dueAtMillis = dueAt,
-                        reminderAdvanceMinutes = schedule.reminderAdvanceMinutes,
+                        reminderAdvanceMinutes = maxOf(schedule.reminderAdvanceMinutes, com.jagger.timer.core.util.DoseCoverage.EARLY_WINDOW_MINUTES),
                         graceMillis = MissedDoseDetector.graceMillis(schedule),
                         nowMillis = System.currentTimeMillis()
                     )

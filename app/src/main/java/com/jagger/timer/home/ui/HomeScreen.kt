@@ -62,6 +62,8 @@ fun HomeScreen(
     onNavigate: (String) -> Unit = {},
     onArchivedClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    confirmPillId: Long? = null,
+    onConfirmHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -72,6 +74,19 @@ fun HomeScreen(
     val archivedCount by viewModel.archivedCount.collectAsState()
     val warnings by viewModel.ingredientWarnings.collectAsState()
     var confirmEarly by remember { mutableStateOf<AsNeededItem?>(null) }
+
+    // A widget tap on a medicine that isn't ready asks for the same confirmation as the Take now button.
+    androidx.compose.runtime.LaunchedEffect(confirmPillId, asNeeded) {
+        val item = asNeeded.firstOrNull { it.pill.id == confirmPillId }
+        if (confirmPillId != null && item != null) {
+            if (item.cooldown.status == CooldownStatus.READY && warnings[item.pill.id]?.wouldExceed != true) {
+                viewModel.takeNow(item.pill)
+            } else {
+                confirmEarly = item
+            }
+            onConfirmHandled()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -292,7 +307,8 @@ fun AsNeededCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 3.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -368,7 +384,8 @@ fun TimelineCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 3.dp)
             .then(if (handled) Modifier.alpha(0.5f) else Modifier),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(
@@ -486,7 +503,10 @@ private fun PillBadge(pill: PillEntity) {
             .androidx_background(c.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
-        Icon(com.jagger.timer.core.util.PillAppearance.icon(pill.icon), contentDescription = null, tint = c)
+        // Dark purples vanish on a dark surface, so lift the icon toward white there.
+        val tint = if (androidx.compose.foundation.isSystemInDarkTheme())
+            androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.White, 0.45f) else c
+        Icon(com.jagger.timer.core.util.PillAppearance.icon(pill.icon), contentDescription = null, tint = tint)
     }
 }
 

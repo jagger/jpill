@@ -35,3 +35,18 @@ class DoseCoverageTest {
         assertEquals(due - 10 * min, r?.timestamp)
     }
 }
+
+class MissedCheckEarlyDoseTest {
+    private val min = 60_000L
+    private val due = 1_000_000_000L
+
+    @Test fun doseTakenThirtyMinutesEarlyIsNotMissed() {
+        val log = due - 32 * min
+        val missed = MissedDoseDetector.shouldLogMissed(
+            logTimestamps = listOf(log), dueAtMillis = due,
+            reminderAdvanceMinutes = maxOf(0, DoseCoverage.EARLY_WINDOW_MINUTES),
+            graceMillis = 60 * min, nowMillis = due + 61 * min
+        )
+        assertEquals(false, missed)
+    }
+}

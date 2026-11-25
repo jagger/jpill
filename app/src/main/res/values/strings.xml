@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">jPill</string>
+    <string name="widget_description">Wait times for as-needed medicines, with a Take now button.</string>
 </resources>
