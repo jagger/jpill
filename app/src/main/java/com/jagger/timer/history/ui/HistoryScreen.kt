@@ -54,6 +54,7 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val rows by viewModel.rows.collectAsState()
+    val adherence by viewModel.adherence.collectAsState()
     val pills by viewModel.pills.collectAsState()
     val pillFilter by viewModel.pillFilter.collectAsState()
     val statusFilter by viewModel.statusFilter.collectAsState()
@@ -128,6 +129,7 @@ fun HistoryScreen(
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                    item(key = "heatmap") { AdherenceHeatmap(adherence) }
                     groups.forEach { group ->
                         item(key = "h_" + group.label) {
                             Text(

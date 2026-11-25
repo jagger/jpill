@@ -28,6 +28,8 @@ class PillRepository @Inject constructor(
     fun getHistory(pillId: Long, status: String, limit: Int): Flow<List<DoseHistoryRow>> =
         pillDao.getHistory(pillId, status, limit)
 
+    fun getHistorySince(pillId: Long, sinceMillis: Long): Flow<List<DoseHistoryRow>> = pillDao.getHistorySince(pillId, sinceMillis)
+
     fun getArchivedPills(): Flow<List<PillEntity>> = pillDao.getArchivedPills()
 
     suspend fun setArchived(pillId: Long, archived: Boolean, at: Long?) = pillDao.setArchived(pillId, archived, at)
