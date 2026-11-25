@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,7 +21,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Warning
@@ -104,8 +105,8 @@ fun HomeScreen(
                             onClick = { menuOpen = false; onArchivedClick() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Privacy") },
-                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            text = { Text("Settings") },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                             onClick = { menuOpen = false; onSettingsClick() }
                         )
                     }
@@ -434,7 +435,7 @@ fun TimelineCard(
                     onClick = onSkip,
                     enabled = !handled,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.weight(1f).height(36.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -444,7 +445,7 @@ fun TimelineCard(
                     onClick = onTaken,
                     enabled = !handled,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.weight(1f).height(36.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -505,7 +506,8 @@ private fun PillBadge(pill: PillEntity) {
     ) {
         // Dark purples vanish on a dark surface, so lift the icon toward white there.
         val tint = if (androidx.compose.foundation.isSystemInDarkTheme())
-            androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.White, 0.45f) else c
+            androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.White, 0.45f)
+        else androidx.compose.ui.graphics.lerp(c, androidx.compose.ui.graphics.Color.Black, 0.3f)
         Icon(com.jagger.timer.core.util.PillAppearance.icon(pill.icon), contentDescription = null, tint = tint)
     }
 }

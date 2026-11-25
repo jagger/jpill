@@ -24,6 +24,11 @@ object PillAppearance {
         0xFFE53935, 0xFFD81B60, 0xFF8E24AA, 0xFF6D4C41, 0xFF546E7A, 0xFF212121
     ).map { it.toInt() }
 
+    private val colorNames = listOf("Indigo", "Blue", "Teal", "Green", "Amber", "Orange", "Red", "Pink", "Purple", "Brown", "Slate", "Black")
+
+    /** Spoken name for a swatch, so TalkBack doesn't just say "button". */
+    fun colorName(color: Int): String = colors.indexOf(color).let { if (it in colorNames.indices) colorNames[it] else "Custom" }
+
     val defaultColor: Int = colors.first()
 
     /** Icon name (stored in `PillEntity.icon`) to vector. Names are stable: never rename one. */

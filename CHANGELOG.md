@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Settings menu.** The Home menu now opens Settings, with Appearance and Privacy and data under it.
+- **Theme choice** (Settings > Appearance): follow the phone, light or dark. The widget always follows the phone.
+- **Delete all data** (Settings > Privacy and data): removes every medicine (archived too), all dose history, schedules and timers, and cancels their reminders and notifications. Needs DELETE typed to confirm. Lock and theme settings are kept.
+
+### Accessibility
+- Colour and icon pickers announce names ("Indigo color", "heart icon") and their selected state to TalkBack; switch rows are single toggle elements.
+- Skip, Taken and the widget's Take now button are at least 48dp tall; picker targets are 48dp.
+- Raised the dark-theme input outline contrast; pill icons are darkened on the light theme.
+
 ## [0.5.0] - 2026-11-24
 
 ### Added

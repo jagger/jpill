@@ -30,6 +30,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -106,7 +107,8 @@ class TakeNowWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .background(if (row.takeDirectly) ButtonFill else ButtonTonal)
                     .cornerRadius(20.dp)
-                    .padding(horizontal = 16.dp, vertical = 9.dp)
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp)
                     .clickable(onClick),
                 contentAlignment = Alignment.Center
             ) {

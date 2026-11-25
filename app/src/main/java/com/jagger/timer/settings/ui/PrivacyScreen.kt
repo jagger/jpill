@@ -4,11 +4,14 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -40,18 +43,19 @@ import com.jagger.timer.settings.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun PrivacyScreen(onNavigateBack: () -> Unit, onDataErased: () -> Unit = {}, viewModel: SettingsViewModel = hiltViewModel()) {
     val settings = viewModel.settings
     val lockEnabled by settings.lockEnabledFlow.collectAsState()
     val timeout by settings.lockTimeoutFlow.collectAsState()
     val hideNames by settings.hideNamesFlow.collectAsState()
     val context = LocalContext.current
     var lockProblem by remember { mutableStateOf<String?>(null) }
+    var confirmErase by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Privacy") },
+                title = { Text("Privacy and data") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -109,14 +113,61 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
+            Text("Your data", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
+            Text(
+                "Removes every medicine (archived ones too), all dose history, schedules and timers, and cancels their reminders. " +
+                    "Your lock and appearance settings stay. This can't be undone.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+            )
+            androidx.compose.material3.OutlinedButton(
+                onClick = { confirmErase = true },
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth().androidx_minTouch()
+            ) { Text("Delete all data") }
         }
     }
+
+    if (confirmErase) EraseDialog(
+        onDismiss = { confirmErase = false },
+        onConfirm = { confirmErase = false; viewModel.eraseAllData(onDataErased) }
+    )
+}
+
+private fun Modifier.androidx_minTouch(): Modifier = this.heightIn(min = 48.dp)
+
+/** Deleting is permanent, so the button only turns on once DELETE has been typed. */
+@Composable
+private fun EraseDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    var typed by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete all data?") },
+        text = {
+            Column {
+                Text("All medicines, dose history and timers will be permanently removed. Type DELETE to confirm.")
+                androidx.compose.material3.OutlinedTextField(
+                    value = typed, onValueChange = { typed = it }, singleLine = true,
+                    label = { Text("Type DELETE") }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = onConfirm, enabled = typed.trim() == "DELETE",
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) { Text("Delete all data") }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable
 private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -124,6 +175,6 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
