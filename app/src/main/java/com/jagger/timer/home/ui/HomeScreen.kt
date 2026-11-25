@@ -284,17 +284,17 @@ fun AsNeededCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(horizontal = 16.dp, vertical = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PillBadge(pill)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = pill.name, style = MaterialTheme.typography.titleLarge)
+                    Text(text = pill.name, style = MaterialTheme.typography.titleMedium)
                     Text(
                         text = RxFormLogic.doseLabel(pill),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     RxInfoLines(pill.instructions, supply)
@@ -308,10 +308,11 @@ fun AsNeededCard(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = statusText,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = when (cd.status) {
                     CooldownStatus.READY -> MaterialTheme.colorScheme.primary
@@ -322,20 +323,22 @@ fun AsNeededCard(
             usage?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.height(12.dp))
+            }
+            Spacer(Modifier.width(8.dp))
             val buttonContent: @Composable () -> Unit = {
                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Take now")
             }
             if (ready) {
-                Button(onClick = onTakeNow, modifier = Modifier.fillMaxWidth(), content = { buttonContent() })
+                Button(onClick = onTakeNow, content = { buttonContent() })
             } else {
-                FilledTonalButton(onClick = onTakeNow, modifier = Modifier.fillMaxWidth(), content = { buttonContent() })
+                FilledTonalButton(onClick = onTakeNow, content = { buttonContent() })
+            }
             }
         }
     }
@@ -356,11 +359,11 @@ fun TimelineCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 3.dp)
             .then(if (handled) Modifier.alpha(0.5f) else Modifier),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -377,17 +380,10 @@ fun TimelineCard(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                    Text(text = entry.pill.name, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = entry.dueTime.format(timeFormatter),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = entry.pill.name, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = RxFormLogic.doseLabel(entry.pill),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = entry.dueTime.format(timeFormatter) + "  ·  " + RxFormLogic.doseLabel(entry.pill),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     RxInfoLines(entry.pill.instructions, supply)
@@ -403,7 +399,7 @@ fun TimelineCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Actions
             Row(
@@ -413,7 +409,8 @@ fun TimelineCard(
                 FilledTonalButton(
                     onClick = onSkip,
                     enabled = !handled,
-                    modifier = Modifier.weight(1f)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.weight(1f).height(36.dp)
                 ) {
                     Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -422,7 +419,8 @@ fun TimelineCard(
                 Button(
                     onClick = onTaken,
                     enabled = !handled,
-                    modifier = Modifier.weight(1f)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.weight(1f).height(36.dp)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -476,8 +474,8 @@ private fun PillBadge(pill: PillEntity) {
     val c = androidx.compose.ui.graphics.Color(pill.color)
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
-            .padding(end = 12.dp)
-            .size(44.dp)
+            .padding(end = 10.dp)
+            .size(36.dp)
             .androidx_background(c.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
