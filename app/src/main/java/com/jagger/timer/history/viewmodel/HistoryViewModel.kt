@@ -55,7 +55,12 @@ class HistoryViewModel @Inject constructor(
                 com.jagger.timer.core.util.AdherenceCalc.last(HEATMAP_DAYS, rows, zone, java.time.LocalDate.now(zone))
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        // Start with 30 empty days (not an empty list): the heatmap then has its full height from the first frame, so
+        // the list below doesn't jump when the data arrives and push the heatmap off the top of the screen.
+        .stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5000),
+            com.jagger.timer.core.util.AdherenceCalc.last(HEATMAP_DAYS, emptyList(), java.time.ZoneId.systemDefault(), java.time.LocalDate.now())
+        )
 
     /** CSV of everything the current filters match (not just the 1000 rows on screen). */
     suspend fun exportCsv(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {

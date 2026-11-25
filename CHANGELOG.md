@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Changed
+- **History heatmap redesigned in the style of GitHub's contribution graph:** small tight squares, weeks as columns and weekdays as rows (Sunday first, Mon/Wed/Fri labelled), with the title, the overall percentage and a Less/More legend beside it. About a third of the previous height. Tap a square for that day's numbers.
+
+### Fixed
+- The History list no longer opens scrolled past the heatmap: it now has its full size from the first frame instead of growing once the data loads.
+
 ## [0.8.0] - 2026-11-25
 
 ### Added
