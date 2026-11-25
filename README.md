@@ -33,24 +33,26 @@ jPill is a personal organiser, **not a medical device**, and it does not give me
 
 ## Install on your phone
 
-jPill is not on an app store. Install it by sideloading the APK from the latest [release](https://github.com/jagger/jpill/releases):
+jPill is not on an app store. You sideload the APK from the latest [release](https://github.com/jagger/jpill/releases/latest) (Android 15 or newer):
 
-1. On your phone (Android 15 or newer), download `jpill-<version>.apk` from the release page.
-2. Open it. Android will ask you to allow installs from that app (your browser or file manager); allow it, then tap Install.
-3. Open jPill and allow notifications when asked, so reminders can appear.
+1. Download `jpill-<version>.apk` on your phone and open it.
+2. Allow installs from that app when Android asks, then tap **Install** (if Play Protect warns about an unknown developer, choose **Install anyway**).
+3. Open jPill and allow notifications, then set its battery use to **Unrestricted** so reminders arrive on time.
 
-**Updating:** download the new APK and install it over the old one. Your medicines and history are kept, because every release is signed with the same key.
+**Full step-by-step guide, update and uninstall notes, and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).**
 
-**Check what you downloaded.** Each release has a `.sha256` file with the APK's checksum, and every APK is signed with the same certificate:
+**Updating:** install the new APK over the old one. Your medicines and history are kept, because every official release is signed with the same key.
+
+**Verify what you downloaded.** Each release has a `.sha256` file with the APK's checksum, and every APK is signed with the same certificate:
 
 ```
 SHA-256 of the signing certificate:
 3527252d8290f901f5fa6dc8f80abd0dc2e91b768b9f6684faa0b68a6528ebaf
 ```
 
-You can see yours with `apksigner verify --print-certs jpill-<version>.apk` (Android SDK build-tools). If the fingerprint is different, do not install it.
+If the fingerprint from `apksigner verify --print-certs jpill-<version>.apk` is different, do not install it.
 
-**Switching from a build you made yourself:** a debug build you compiled has a different signature, so Android won't install the release APK over it. You would have to uninstall first, which deletes the app's data. Export what you need (History has a CSV share) before switching.
+**Switching from a build you compiled yourself:** it has a different signature, so Android won't install the release over it. Uninstall first, which deletes the app's data; export what you need first (History has a CSV share).
 
 ## Build from source
 
