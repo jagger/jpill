@@ -279,7 +279,8 @@ fun PillFormScreen(
                 onPreset = { viewModel.addInstructionPreset(it) }
             )
 
-            com.jagger.timer.nfc.NfcTagPanel(
+            val nfcEnabled by viewModel.nfcEnabled.collectAsState()
+            if (nfcEnabled) com.jagger.timer.nfc.NfcTagPanel(
                 kind = com.jagger.timer.nfc.NfcTagKind.MEDICINE,
                 tagId = uiState.nfcTagId,
                 name = uiState.name,

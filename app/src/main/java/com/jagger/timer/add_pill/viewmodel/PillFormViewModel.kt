@@ -76,8 +76,12 @@ class PillFormViewModel @Inject constructor(
     private val scheduleManager: ScheduleManager,
     private val drugDataset: DrugDatasetSource,
     private val tagDirectory: com.jagger.timer.nfc.NfcTagDirectory,
+    appSettings: com.jagger.timer.core.settings.AppSettings,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    /** NFC tags are a beta feature; the form shows its section only when the user switched it on. */
+    val nfcEnabled: StateFlow<Boolean> = appSettings.nfcBetaFlow
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()

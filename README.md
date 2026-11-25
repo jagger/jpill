@@ -13,7 +13,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 - **Prescriptions:** supply tracking and refill reminders, prescriber, pharmacy and Rx number, and food and timing tags ("With food", "Stay upright 30 min", "No heavy machinery").
 - **History:** every taken, skipped and missed dose, filterable, with CSV export through Android's share sheet.
 - **Timers:** general-purpose countdowns that keep running with the app closed.
-- **NFC tags:** stick a tag on a medicine lid and tap your phone to confirm a dose, or on the washer to start its timer. Tags hold only a random id and a name, never a dose.
+- **NFC tags (beta, off by default; Settings, Beta features):** stick a tag on a medicine lid and tap your phone to confirm a dose, or on the washer to start its timer. Tags hold only a random id and a name, never a dose.
 - **Home-screen widget:** wait times for as-needed medicines with a one-tap Take now.
 - **Privacy:** optional fingerprint, face or PIN app lock, an option to hide medicine names on the lock screen, and a Delete all data button.
 - **Looks:** dark and light themes, accessibility checked (contrast, 48 dp touch targets, TalkBack labels).

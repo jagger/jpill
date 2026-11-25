@@ -6,7 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ## [Unreleased]
 
 ### Added
-- **NFC tags for medicines and timers.** Stick an NFC sticker on a medicine's lid (or on the washer) and tap your phone to it.
+- **Beta features** screen (Settings > Beta features): features still being tested stay off until you switch them on. NFC tags is the first.
+- **NFC tags for medicines and timers (beta, off by default).** Switch on in Settings > Beta features. Stick an NFC sticker on a medicine's lid (or on the washer) and tap your phone to it.
   - **Medicines:** tapping opens a small confirm card (it never opens the whole app, so it works with the app lock on); confirming logs the dose. A scheduled dose inside the 2 hour early window counts toward that dose, anything else asks first; as-needed medicines follow the wait, daily-max and shared-ingredient rules with the same "take it early?" confirmation; a repeat scan of a dose already logged says so instead of logging twice.
   - **Timers:** tapping starts that timer (for example "Washer, 45:00"); a running timer offers Restart, a paused one Resume.
   - **Setting up a tag:** in a medicine's edit screen (NFC tag section) or from the NFC button on a timer, Write tag, Rewrite tag (reuses the same id, so a replacement sticker keeps working), Link existing tag (medicines), or Remove tag. It warns before overwriting a tag that already holds other data and verifies what it wrote.

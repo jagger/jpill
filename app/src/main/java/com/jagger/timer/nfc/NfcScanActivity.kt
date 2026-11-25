@@ -65,10 +65,11 @@ class NfcScanActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
-        if (savedInstanceState == null) viewModel.handle(intent?.dataString)
+        if (savedInstanceState == null && appSettings.nfcBetaEnabled) viewModel.handle(intent?.dataString)
         setContent {
             JPillTheme {
                 val ui by viewModel.ui.collectAsState()
+                val betaOn by appSettings.nfcBetaFlow.collectAsState()
                 // The medicine name stays off a locked screen when the user chose to hide names there.
                 val hideName = remember { appSettings.hideNamesOnLockScreen && (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked }
                 val none = remember { MutableInteractionSource() }
@@ -78,7 +79,11 @@ class NfcScanActivity : ComponentActivity() {
                 ) {
                     Card(Modifier.padding(24.dp).fillMaxWidth().clickable(interactionSource = none, indication = null) { }) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ScanCard(ui, hideName, onClose = { finish() }, onAddNew = { id, name -> openAddMedicine(id, name) })
+                            if (!betaOn) {
+                                Title("NFC tags are switched off")
+                                Body("NFC tags are a beta feature. Turn them on in jPill under Settings, Beta features.")
+                                CloseRow { finish() }
+                            } else ScanCard(ui, hideName, onClose = { finish() }, onAddNew = { id, name -> openAddMedicine(id, name) })
                         }
                     }
                 }
@@ -89,7 +94,7 @@ class NfcScanActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        viewModel.handle(intent.dataString)
+        if (appSettings.nfcBetaEnabled) viewModel.handle(intent.dataString)
     }
 
     private fun openAddMedicine(tagId: String, name: String?) {

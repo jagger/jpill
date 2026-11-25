@@ -57,6 +57,7 @@ fun TimersScreen(
     viewModel: TimersViewModel = hiltViewModel()
 ) {
     val timers by viewModel.timers.collectAsState()
+    val nfcEnabled by viewModel.nfcEnabled.collectAsState()
     var showNew by remember { mutableStateOf(false) }
     var nfcTimer by remember { mutableStateOf<Long?>(null) }
 
@@ -79,7 +80,7 @@ fun TimersScreen(
             LazyColumn(Modifier.padding(inner).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 items(timers, key = { it.timer.id }) { item ->
-                    TimerCard(item, viewModel::pause, viewModel::resume, viewModel::restart, viewModel::delete, onNfc = { nfcTimer = item.timer.id })
+                    TimerCard(item, viewModel::pause, viewModel::resume, viewModel::restart, viewModel::delete, onNfc = if (nfcEnabled) ({ nfcTimer = item.timer.id }) else null)
                 }
             }
         }
@@ -113,7 +114,7 @@ fun TimersScreen(
 private fun TimerCard(
     item: TimerItem,
     onPause: (Long) -> Unit, onResume: (Long) -> Unit, onRestart: (Long) -> Unit, onDelete: (Long) -> Unit,
-    onNfc: () -> Unit
+    onNfc: (() -> Unit)?
 ) {
     val t = item.timer
     // A RUNNING timer past its end shows as done right away, before the alarm updates the row.
@@ -142,7 +143,7 @@ private fun TimerCard(
                 t.state == TimerState.PAUSED -> IconButton(onClick = { onResume(t.id) }) { Icon(Icons.Default.PlayArrow, contentDescription = "Resume") }
                 else -> IconButton(onClick = { onPause(t.id) }) { Icon(Icons.Default.Pause, contentDescription = "Pause") }
             }
-            IconButton(onClick = onNfc) {
+            if (onNfc != null) IconButton(onClick = onNfc) {
                 Icon(
                     Icons.Default.Nfc,
                     contentDescription = if (t.nfcTagId != null) "NFC tag linked, manage tag" else "Add NFC tag",

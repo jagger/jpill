@@ -21,8 +21,11 @@ data class TimerItem(val timer: TimerEntity, val nowMillis: Long)
 @HiltViewModel
 class TimersViewModel @Inject constructor(
     private val manager: TimerManager,
-    private val tagDirectory: com.jagger.timer.nfc.NfcTagDirectory
+    private val tagDirectory: com.jagger.timer.nfc.NfcTagDirectory,
+    appSettings: com.jagger.timer.core.settings.AppSettings
 ) : ViewModel() {
+
+    val nfcEnabled: StateFlow<Boolean> = appSettings.nfcBetaFlow
 
     private val ticker = flow { while (true) { emit(System.currentTimeMillis()); delay(500) } }
 

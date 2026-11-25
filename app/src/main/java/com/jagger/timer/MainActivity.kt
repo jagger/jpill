@@ -144,11 +144,15 @@ class MainActivity : FragmentActivity() {
                             onNavigateBack = { navController.popBackStack() },
                             onAppearance = { navController.navigate("settings/appearance") },
                             onPrivacy = { navController.navigate("settings/privacy") },
+                            onBeta = { navController.navigate("settings/beta") },
                             onAbout = { navController.navigate("settings/about") }
                         )
                     }
                     composable("settings/appearance") {
                         AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/beta") {
+                        com.jagger.timer.settings.ui.BetaScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("settings/about") {
                         AboutScreen(

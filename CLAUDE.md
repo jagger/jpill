@@ -47,6 +47,8 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 
 ## NFC Tags
 
+- **Beta, off by default:** `AppSettings.nfcBetaEnabled` (Settings > Beta features). It hides the medicine-form NFC section and the timer NFC button, and `NfcScanActivity` just says tags are switched off. Remove the gate once tags are proven on real stickers.
+
 - `nfc/NfcPayload` (pure) is the tag format: `jpill://tag/<id>[?name=..]` for a medicine, `jpill://timer/<id>?label=..&secs=..` for a timer. `NfcTagUri` makes/validates the 128-bit random id. Never put a dose or other medicine detail on a tag.
 - `nfc/TagScanResolver` (pure) turns a scanned medicine into a `ScanDecision` (due / early / already taken / as-needed ready or early / archived / unknown) using `DoseCoverage` (2 h early window), `CooldownCalculator` and the shared-ingredient warning; `TimerScanResolver` does the same for timers. The user always confirms before anything is logged or started.
 - `nfc/NfcScanActivity` is exported with an `NDEF_DISCOVERED` filter for `jpill://tag` and `jpill://timer`; it shows a confirm card only (so it works over the lock screen and with the app lock on) and hides the medicine name on a locked screen when that setting is on. `NfcScanViewModel` logs through the normal `PillRepository.logDose` + `ScheduleManager.refreshAlarmsForPill` path.
