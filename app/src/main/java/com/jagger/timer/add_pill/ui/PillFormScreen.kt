@@ -61,6 +61,12 @@ import com.jagger.timer.core.data.local.entity.ScheduleType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -234,7 +240,12 @@ fun PillFormScreen(
             }
 
             // Prescription toggle + details
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().toggleable(
+                    value = uiState.isPrescription, role = Role.Switch, onValueChange = { viewModel.updateIsPrescription(it) }
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Prescription", style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -243,7 +254,7 @@ fun PillFormScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Switch(checked = uiState.isPrescription, onCheckedChange = { viewModel.updateIsPrescription(it) })
+                Switch(checked = uiState.isPrescription, onCheckedChange = null)
             }
             if (uiState.isPrescription) {
                 PrescriptionSection(
@@ -265,7 +276,9 @@ fun PillFormScreen(
 
             // As-needed toggle
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().toggleable(
+                    value = uiState.asNeeded, role = Role.Switch, onValueChange = { viewModel.updateAsNeeded(it) }
+                ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -276,7 +289,7 @@ fun PillFormScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Switch(checked = uiState.asNeeded, onCheckedChange = { viewModel.updateAsNeeded(it) })
+                Switch(checked = uiState.asNeeded, onCheckedChange = null)
             }
 
             if (uiState.asNeeded) {
@@ -743,8 +756,10 @@ private fun AppearancePicker(color: Int, icon: String?, onColor: (Int) -> Unit, 
         Text("Color", style = MaterialTheme.typography.labelMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             com.jagger.timer.core.util.PillAppearance.colors.forEach { c ->
+                val colorName = com.jagger.timer.core.util.PillAppearance.colorName(c)
                 Box(
                     modifier = Modifier
+                        .minimumInteractiveComponentSize() // 48dp touch target around the 36dp swatch
                         .size(36.dp)
                         .background(androidx.compose.ui.graphics.Color(c), androidx.compose.foundation.shape.CircleShape)
                         .border(
@@ -752,11 +767,12 @@ private fun AppearancePicker(color: Int, icon: String?, onColor: (Int) -> Unit, 
                             MaterialTheme.colorScheme.onSurface,
                             androidx.compose.foundation.shape.CircleShape
                         )
-                        .clickable { onColor(c) },
+                        .selectable(selected = c == color, role = Role.RadioButton, onClick = { onColor(c) })
+                        .semantics { contentDescription = "$colorName color" },
                     contentAlignment = Alignment.Center
                 ) {
                     if (c == color) Icon(
-                        Icons.Default.Check, contentDescription = "Selected",
+                        Icons.Default.Check, contentDescription = null,
                         tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp)
                     )
                 }
@@ -768,6 +784,7 @@ private fun AppearancePicker(color: Int, icon: String?, onColor: (Int) -> Unit, 
                 val isSel = vector == selected
                 Box(
                     modifier = Modifier
+                        .minimumInteractiveComponentSize()
                         .size(44.dp)
                         .background(
                             if (isSel) androidx.compose.ui.graphics.Color(color).copy(alpha = 0.2f)
@@ -779,9 +796,10 @@ private fun AppearancePicker(color: Int, icon: String?, onColor: (Int) -> Unit, 
                             if (isSel) androidx.compose.ui.graphics.Color(color) else MaterialTheme.colorScheme.outlineVariant,
                             androidx.compose.foundation.shape.CircleShape
                         )
-                        .clickable { onIcon(name) },
+                        .selectable(selected = isSel, role = Role.RadioButton, onClick = { onIcon(name) })
+                        .semantics { contentDescription = "$name icon" },
                     contentAlignment = Alignment.Center
-                ) { Icon(vector, contentDescription = name, tint = androidx.compose.ui.graphics.Color(color)) }
+                ) { Icon(vector, contentDescription = null, tint = androidx.compose.ui.graphics.Color(color)) }
             }
         }
     }

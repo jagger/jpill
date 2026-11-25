@@ -31,7 +31,7 @@ private val Dark = darkColorScheme(
     surfaceContainerLowest = Color(0xFF0B0F14), surfaceContainerLow = Color(0xFF12181F),
     surfaceContainer = Color(0xFF151C24), surfaceContainerHigh = Color(0xFF1A222B),
     surfaceContainerHighest = Color(0xFF1B242E),
-    outline = Color(0xFF4A5968), outlineVariant = Color(0xFF26303B),
+    outline = Color(0xFF6B7D8F), outlineVariant = Color(0xFF26303B),
     error = Color(0xFFFF8A80), onError = Color(0xFF3B0A06),
     errorContainer = Color(0xFF4A1A16), onErrorContainer = Color(0xFFFFDAD6)
 )
