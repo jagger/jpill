@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-24
+
 ### Added
 - **Share History as CSV.** A share icon in the History top bar hands the list to Android's share sheet as `jpill-history-<date>.csv` (Date, Time, Medication, Status, Amount, Unit, Note). It exports everything the current medication and status filters match, not just the rows on screen. Text a spreadsheet would run as a formula is neutralised.
 - **Food and timing tags** for every medicine (not just prescriptions): With food, Empty stomach, Morning, Evening, At bedtime, Stay upright 30 min, Full glass of water, No heavy machinery, Avoid alcohol, Avoid grapefruit, Avoid sun exposure, plus free text. Stored in the existing notes field, so nothing in the database changes.
@@ -130,7 +132,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jagger/jpill/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/jagger/jpill/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jagger/jpill/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/jagger/jpill/compare/v0.4.1...v0.4.2
