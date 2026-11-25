@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Share History as CSV.** A share icon in the History top bar hands the list to Android's share sheet as `jpill-history-<date>.csv` (Date, Time, Medication, Status, Amount, Unit, Note). It exports everything the current medication and status filters match, not just the rows on screen. Text a spreadsheet would run as a formula is neutralised.
+- **Food and timing tags** for every medicine (not just prescriptions): With food, Empty stomach, Morning, Evening, At bedtime, Stay upright 30 min, Full glass of water, No heavy machinery, Avoid alcohol, Avoid grapefruit, Avoid sun exposure, plus free text. Stored in the existing notes field, so nothing in the database changes.
+
+### Changed
+- **Compact medicine tiles on Home**, about half as tall. Each is one row: icon, name, a status line (dose time, or the wait countdown for as-needed medicines) and its buttons (Skip and Taken, or Take now). A warning icon appears when a medicine has a shared-ingredient or low-supply alert.
+- **Tap a tile to expand it** (one open at a time): tags, doctor, Rx number, pharmacy, supply, 24 h usage for as-needed medicines, and the Edit button.
+
 ## [0.5.1] - 2026-11-24
 
 ### Added

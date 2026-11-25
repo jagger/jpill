@@ -173,7 +173,7 @@ class PillFormViewModel @Inject constructor(
     fun updateRefillDays(v: String) = _uiState.update { it.copy(refillDaysText = v.filter { c -> c.isDigit() }.take(3)) }
     fun updateInstructions(v: String) = _uiState.update { it.copy(instructions = v) }
     fun addInstructionPreset(phrase: String) =
-        _uiState.update { it.copy(instructions = RxFormLogic.addInstruction(it.instructions, phrase)) }
+        _uiState.update { it.copy(instructions = com.jagger.timer.core.util.InstructionTags.toggle(it.instructions, phrase)) }
     fun updatePrescriber(v: String) = _uiState.update { it.copy(prescriber = v) }
     fun updatePharmacy(v: String) = _uiState.update { it.copy(pharmacy = v) }
     fun updateRxNumber(v: String) = _uiState.update { it.copy(rxNumber = v) }
@@ -294,7 +294,7 @@ class PillFormViewModel @Inject constructor(
                 isPrescription = state.isPrescription,
                 supplyCount = if (state.isPrescription) RxFormLogic.parseSupply(state.supplyText) else null,
                 refillThresholdDays = RxFormLogic.parseRefillDays(state.refillDaysText),
-                instructions = state.instructions.trim().takeIf { state.isPrescription && it.isNotEmpty() },
+                instructions = state.instructions.trim().takeIf { it.isNotEmpty() },
                 prescriber = state.prescriber.trim().takeIf { state.isPrescription && it.isNotEmpty() },
                 pharmacy = state.pharmacy.trim().takeIf { state.isPrescription && it.isNotEmpty() },
                 rxNumber = state.rxNumber.trim().takeIf { state.isPrescription && it.isNotEmpty() }

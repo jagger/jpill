@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,7 +40,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.jagger.timer.core.data.local.dao.DoseHistoryRow
 import com.jagger.timer.core.data.local.entity.DoseStatus
 import com.jagger.timer.core.util.HistoryFormatter
+import com.jagger.timer.history.HistoryShare
 import com.jagger.timer.history.viewmodel.HistoryViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -54,6 +57,8 @@ fun HistoryScreen(
     val pillFilter by viewModel.pillFilter.collectAsState()
     val statusFilter by viewModel.statusFilter.collectAsState()
     var menuOpen by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val zone = ZoneId.systemDefault()
     val groups = remember(rows) { HistoryFormatter.groupByDay(rows, zone, LocalDate.now(zone)) }
@@ -63,7 +68,15 @@ fun HistoryScreen(
         bottomBar = { com.jagger.timer.nav.MainNavBar(com.jagger.timer.nav.Routes.HISTORY, onNavigate) },
         topBar = {
             TopAppBar(
-                title = { Text("History") }
+                title = { Text("History") },
+                actions = {
+                    IconButton(
+                        enabled = rows.isNotEmpty(),
+                        onClick = { scope.launch { HistoryShare.share(context, viewModel.exportCsv()) } }
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share history as CSV")
+                    }
+                }
             )
         }
     ) { innerPadding ->
