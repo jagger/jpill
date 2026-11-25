@@ -71,6 +71,16 @@ android {
     sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
 }
 
+// The What's new popup reads the changelog from the app itself (no network), so ship CHANGELOG.md as an asset.
+// Copied at build time so the popup can never drift from the real changelog.
+val changelogAssetsDir = layout.buildDirectory.dir("generated/changelogAssets")
+val copyChangelog by tasks.registering(Copy::class) {
+    from(rootProject.file("CHANGELOG.md"))
+    into(changelogAssetsDir)
+}
+android.sourceSets["main"].assets.srcDir(changelogAssetsDir)
+tasks.named("preBuild") { dependsOn(copyChangelog) }
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }

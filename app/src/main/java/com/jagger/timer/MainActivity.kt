@@ -72,6 +72,9 @@ class MainActivity : FragmentActivity() {
     /** Set by an NFC scan of a tag this phone does not know: open Add Medicine with the tag (and its name) filled in. */
     private var prefill by mutableStateOf<Pair<String, String?>?>(null)
 
+    /** Release notes the user hasn't seen yet (after an update); cleared when they tap "Got it". */
+    private var whatsNew by mutableStateOf<List<com.jagger.timer.whatsnew.ReleaseNotes>>(emptyList())
+
     companion object {
         const val EXTRA_CONFIRM_PILL_ID = "confirm_pill_id"
         const val EXTRA_PREFILL_TAG = "prefill_tag"
@@ -93,6 +96,7 @@ class MainActivity : FragmentActivity() {
         setRecentsScreenshotEnabled(!appSettings.lockEnabled)
 
         checkNotificationPermission()
+        loadWhatsNew()
 
         setContent {
             val themeMode by appSettings.themeModeFlow.collectAsState()
@@ -116,6 +120,12 @@ class MainActivity : FragmentActivity() {
                         popUpTo(Routes.HOME) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
+                    }
+                }
+                if (!(locked && appSettings.lockEnabled) && whatsNew.isNotEmpty()) {
+                    com.jagger.timer.whatsnew.WhatsNewDialog(whatsNew) {
+                        appSettings.lastSeenVersionCode = currentVersionCode()
+                        whatsNew = emptyList()
                     }
                 }
                 if (locked && appSettings.lockEnabled) {
@@ -194,6 +204,20 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun currentVersionCode(): Int = packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
+
+    /** After an update, queue the changelog entries newer than the version last seen (nothing on a fresh install). */
+    private fun loadWhatsNew() {
+        runCatching {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            val current = info.longVersionCode.toInt()
+            val fresh = info.lastUpdateTime - info.firstInstallTime < 10_000L
+            val releases = com.jagger.timer.whatsnew.WhatsNew.parse(assets.open("CHANGELOG.md").bufferedReader().use { it.readText() })
+            val pending = com.jagger.timer.whatsnew.WhatsNew.pending(releases, appSettings.lastSeenVersionCode, current, fresh)
+            if (pending.isEmpty()) appSettings.lastSeenVersionCode = current else whatsNew = pending
         }
     }
 
