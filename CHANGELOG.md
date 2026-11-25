@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-24
+
+### Changed
+- **Smaller medicine tiles on Home.** Tighter padding, smaller text and icon, the dose time shares a line with the dose, and the Skip/Taken buttons are shorter. An as-needed tile now shows its status and "Take now" on one row. Roughly four tiles fit on a screen instead of two or three.
+
 ## [0.4.1] - 2026-11-24
 
 ### Fixed
@@ -91,7 +96,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/jagger/jpill/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/jagger/jpill/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.4.0
 [0.3.0]: https://github.com/jagger/jpill/compare/v0.2.0...v0.3.0
