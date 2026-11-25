@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **App lock.** Optional fingerprint / face / phone-PIN prompt when jPill opens (Home menu > Privacy), with a timing choice (immediately, 30 s, 1, 5 or 15 min). A cold start always asks. The recent-apps card hides your medicines while the lock is on, and the lock turns itself off if the phone's screen lock is removed so you can't be locked out.
+- **Hide medicine names on the lock screen.** Notifications show "Medication reminder" while the phone is locked; Taken, Skip and Snooze still work without unlocking.
+- The Privacy screen explains why data is not encrypted: background reminders can't use a fingerprint-gated key, and Keystore keys don't survive restoring a backup.
+
 ## [0.4.2] - 2026-11-24
 
 ### Changed

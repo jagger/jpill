@@ -4,11 +4,36 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import com.jagger.timer.core.settings.AppSettings
+import com.jagger.timer.core.util.AppLockPolicy
+import com.jagger.timer.settings.ui.SettingsScreen
+import javax.inject.Inject
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
@@ -26,7 +51,15 @@ import com.jagger.timer.timers.ui.TimersScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
+
+    @Inject lateinit var appSettings: AppSettings
+
+    /** Starts locked, so a cold start always asks (when the lock is on). */
+    private var locked by mutableStateOf(true)
+    private var backgroundedAt: Long? = null
+    private var prompting = false
+
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -37,7 +70,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+        // Don't let the recent-apps card show medicines while the lock is on.
+        setRecentsScreenshotEnabled(!appSettings.lockEnabled)
+
         checkNotificationPermission()
 
         setContent {
@@ -50,7 +85,9 @@ class MainActivity : ComponentActivity() {
                         restoreState = true
                     }
                 }
-                NavHost(
+                if (locked && appSettings.lockEnabled) {
+                    LockScreen(onUnlock = { promptUnlock() })
+                } else NavHost(
                     navController = navController,
                     startDestination = if (intent?.getStringExtra("route") == Routes.TIMERS) Routes.TIMERS else Routes.HOME
                 ) {
@@ -60,11 +97,15 @@ class MainActivity : ComponentActivity() {
                             onAddPillClick = { navController.navigate("pill_form") },
                             onEditPillClick = { pillId -> navController.navigate("pill_form?pillId=$pillId") },
                             onNavigate = goTop,
-                            onArchivedClick = { navController.navigate("archived") }
+                            onArchivedClick = { navController.navigate("archived") },
+                            onSettingsClick = { navController.navigate("settings") }
                         )
                     }
                     composable("history") {
                         HistoryScreen(onNavigate = goTop)
+                    }
+                    composable("settings") {
+                        SettingsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("archived") {
                         ArchivedScreen(onNavigateBack = { navController.popBackStack() })
@@ -85,6 +126,50 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        setRecentsScreenshotEnabled(!appSettings.lockEnabled)
+        if (!appSettings.lockEnabled) { locked = false; return }
+        if (AppLockPolicy.shouldLock(true, backgroundedAt, System.currentTimeMillis(), appSettings.lockTimeoutSeconds)) {
+            locked = true
+            promptUnlock()
+        } else {
+            locked = false
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!locked) backgroundedAt = System.currentTimeMillis()
+    }
+
+    private fun promptUnlock() {
+        if (prompting) return
+        val allowed = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+        if (BiometricManager.from(this).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
+            // Screen lock was removed since the lock was turned on: don't lock the user out of their medicines.
+            appSettings.lockEnabled = false
+            locked = false
+            return
+        }
+        prompting = true
+        val prompt = BiometricPrompt(
+            this, ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    prompting = false; locked = false
+                }
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { prompting = false }
+            }
+        )
+        prompt.authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Unlock jPill")
+                .setAllowedAuthenticators(allowed)
+                .build()
+        )
     }
 
     private fun checkNotificationPermission() {
@@ -108,3 +193,18 @@ fun TimerTheme(content: @Composable () -> Unit) {
     )
 }
 
+
+@Composable
+private fun LockScreen(onUnlock: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+            Text("jPill is locked", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
+            Button(onClick = onUnlock, modifier = Modifier.padding(top = 24.dp)) { Text("Unlock") }
+        }
+    }
+}
