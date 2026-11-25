@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-25
+
 ### Added
 - **Edit or delete a History entry.** Long-press a row in History to change its status (Taken, Skipped, Missed), date, time and amount, or delete it (with a confirmation). Supply stays right: deleting a taken dose, or changing it to something else, puts the tablets back on a medicine that tracks supply; changing a skipped or missed entry to Taken uses them. The medicine's reminders are re-planned afterwards.
 
@@ -186,7 +188,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/jagger/jpill/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/jagger/jpill/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/jagger/jpill/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/jagger/jpill/compare/v0.8.0...v0.8.1
