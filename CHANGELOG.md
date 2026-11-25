@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-24
+
 ### Changed
 - **New app icon:** a flat capsule, solid on the left and empty on the right like a progress bar, graphite on a soft ice-blue background, replacing the clock. Includes a themed (monochrome) layer for Android 13+ themed icons.
 
@@ -135,7 +137,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/jagger/jpill/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jagger/jpill/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/jagger/jpill/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jagger/jpill/compare/v0.4.2...v0.5.0
