@@ -5,7 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-25
+
 ### Added
+- **Signed release APKs** for sideloading: attached to each GitHub release with a checksum, signed with the project key, shrunk with R8 (about 4.5 MB). Updates install over the previous release and keep your data. See README, Install on your phone.
 - **30-day adherence heatmap** at the top of History: a calendar grid of halftone blocks, one per day. Each block is a 4 x 4 dot matrix whose dots grow with the share of scheduled doses taken that day and merge into a solid block at 100%; an empty red outline means doses were scheduled but none taken, a faint dot means none were scheduled. Tap a day for the numbers. Follows the medication filter. Only scheduled doses count (as-needed doses have no expected number).
 - **Beta features** screen (Settings > Beta features): features still being tested stay off until you switch them on. NFC tags is the first.
 - **NFC tags for medicines and timers (beta, off by default).** Switch on in Settings > Beta features. Stick an NFC sticker on a medicine's lid (or on the washer) and tap your phone to it.
@@ -155,7 +158,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/jagger/jpill/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jagger/jpill/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/jagger/jpill/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jagger/jpill/compare/v0.5.1...v0.6.0
