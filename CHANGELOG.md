@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Changed
+- **New app icon:** a flat capsule, solid on the left and empty on the right like a progress bar, graphite on a soft ice-blue background, replacing the clock. Includes a themed (monochrome) layer for Android 13+ themed icons.
+
 ## [0.6.0] - 2026-11-24
 
 ### Added
