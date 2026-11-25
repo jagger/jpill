@@ -25,7 +25,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -52,6 +55,16 @@ fun AboutScreen(onNavigateBack: () -> Unit, onLicense: () -> Unit) {
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
     }
+    var showWhatsNew by remember { mutableStateOf(false) }
+    if (showWhatsNew) {
+        val current = remember {
+            runCatching { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt() }.getOrDefault(Int.MAX_VALUE)
+        }
+        val recent = remember {
+            com.jagger.timer.whatsnew.loadBundledReleases(context).filter { it.code <= current && it.lines.isNotEmpty() }.take(5)
+        }
+        com.jagger.timer.whatsnew.WhatsNewDialog(recent, onDismiss = { showWhatsNew = false }, dismissOnOutsideTap = true)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -72,6 +85,10 @@ fun AboutScreen(onNavigateBack: () -> Unit, onLicense: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 12.dp)
             )
+
+            OutlinedButton(onClick = { showWhatsNew = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 12.dp)) {
+                Text("What's new")
+            }
 
             Heading("The project")
             Body("jPill is open source. Browse the code, read the changelog, suggest a feature or report a problem on GitHub.")

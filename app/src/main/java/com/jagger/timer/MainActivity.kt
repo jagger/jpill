@@ -123,10 +123,10 @@ class MainActivity : FragmentActivity() {
                     }
                 }
                 if (!(locked && appSettings.lockEnabled) && whatsNew.isNotEmpty()) {
-                    com.jagger.timer.whatsnew.WhatsNewDialog(whatsNew) {
+                    com.jagger.timer.whatsnew.WhatsNewDialog(whatsNew, onDismiss = {
                         appSettings.lastSeenVersionCode = currentVersionCode()
                         whatsNew = emptyList()
-                    }
+                    })
                 }
                 if (locked && appSettings.lockEnabled) {
                     LockScreen(onUnlock = { promptUnlock() })
@@ -215,7 +215,7 @@ class MainActivity : FragmentActivity() {
             val info = packageManager.getPackageInfo(packageName, 0)
             val current = info.longVersionCode.toInt()
             val fresh = info.lastUpdateTime - info.firstInstallTime < 10_000L
-            val releases = com.jagger.timer.whatsnew.WhatsNew.parse(assets.open("CHANGELOG.md").bufferedReader().use { it.readText() })
+            val releases = com.jagger.timer.whatsnew.loadBundledReleases(this)
             val pending = com.jagger.timer.whatsnew.WhatsNew.pending(releases, appSettings.lastSeenVersionCode, current, fresh)
             if (pending.isEmpty()) appSettings.lastSeenVersionCode = current else whatsNew = pending
         }
