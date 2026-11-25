@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jagger.timer.core.util.AdherenceCalc
 import com.jagger.timer.core.util.DayAdherence
@@ -39,11 +38,11 @@ import java.time.LocalDate
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-private val CELL = 15.dp
+private val CELL = 16.dp
 private val GAP = 2.dp
 
 /**
- * The last 30 days in the style of GitHub's contribution graph: weeks run left to right as columns, weekdays top to
+ * The last 90 days in the style of GitHub's contribution graph: weeks run left to right as columns, weekdays top to
  * bottom (Sunday first), one small square per day. Each square is a 3 x 3 halftone dot matrix whose dots grow with the
  * share of scheduled doses taken that day and merge into one solid square at 100%. An outlined empty square means doses
  * were scheduled but none taken; a faint dot means none were scheduled. Tap a square for the numbers.
@@ -59,11 +58,7 @@ fun AdherenceHeatmap(days: List<DayAdherence>, modifier: Modifier = Modifier) {
     val lead = days.first().date.dayOfWeek.value % 7 // Sunday = 0, as in GitHub's graph
     val weeks = ceil((lead + days.size) / 7.0).toInt()
 
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Top
-    ) {
+    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // weekday labels (Mon, Wed, Fri) like GitHub, then one column per week
         Row(horizontalArrangement = Arrangement.spacedBy(GAP)) {
             Column(verticalArrangement = Arrangement.spacedBy(GAP), horizontalAlignment = Alignment.End) {
@@ -90,21 +85,16 @@ fun AdherenceHeatmap(days: List<DayAdherence>, modifier: Modifier = Modifier) {
             }
         }
 
-        // title, headline number and legend in the space to the right
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Last 30 days", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // one line under the grid: what it shows (or the tapped day) and the legend
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                overall?.let { "$it% taken" } ?: "No doses yet",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                picked?.let { AdherenceCalc.describe(it) } ?: "Tap a square for details",
+                picked?.let { AdherenceCalc.describe(it) }
+                    ?: ("Last ${days.size} days" + (overall?.let { "  ·  $it% taken" } ?: "")),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.weight(1f)
             )
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("Less", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { f ->
                     HalftoneBlock(f, true, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.outlineVariant, null,

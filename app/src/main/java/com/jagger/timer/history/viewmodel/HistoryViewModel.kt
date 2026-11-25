@@ -29,7 +29,7 @@ class HistoryViewModel @Inject constructor(
     companion object {
         const val ALL_PILLS = -1L
         private const val LIMIT = 1000
-        const val HEATMAP_DAYS = 30
+        const val HEATMAP_DAYS = 90
     }
 
     private val _pillFilter = MutableStateFlow(ALL_PILLS)
@@ -46,7 +46,7 @@ class HistoryViewModel @Inject constructor(
         .flatMapLatest { (p, s) -> pillRepository.getHistory(p, s?.name ?: "", LIMIT) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Daily adherence for the last 30 days, for the heatmap. Follows the medication filter but not the status filter. */
+    /** Daily adherence for the last 90 days, for the heatmap. Follows the medication filter but not the status filter. */
     val adherence: StateFlow<List<com.jagger.timer.core.util.DayAdherence>> = _pillFilter
         .flatMapLatest { p ->
             val zone = java.time.ZoneId.systemDefault()
