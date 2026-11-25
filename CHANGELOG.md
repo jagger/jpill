@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-25
+
 ### Added
 - **Tappable web addresses in a medicine's details.** A website in the Doctor, Rx number or Pharmacy field (for example your pharmacy's refill page: `https://...`, `www....`, or `example.com/refill`) is underlined and opens in your browser when you tap it in the expanded medicine card. While editing it stays plain text. Only http and https links are ever made tappable.
 
@@ -177,7 +179,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/jagger/jpill/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/jagger/jpill/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/jagger/jpill/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/jagger/jpill/compare/v0.7.0...v0.8.0
