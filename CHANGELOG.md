@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-25
+
 ### Added
 - **About screen** (Settings > About): version, a link to the project on GitHub, a link to report problems or suggest features, a Ko-fi link to support jPill, the GPL notice with the full GNU General Public License v3 text built in, the medical disclaimer and credits.
 - **Open-source release preparation:** jPill is licensed under the GNU GPL v3 or later (`LICENSE`, and an SPDX identifier on every source file). New `README.md` (features, privacy, medical disclaimer, build steps), `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, and a GitHub funding link.
@@ -141,7 +143,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jagger/jpill/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/jagger/jpill/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jagger/jpill/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/jagger/jpill/compare/v0.5.0...v0.5.1
