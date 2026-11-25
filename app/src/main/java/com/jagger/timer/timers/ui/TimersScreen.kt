@@ -96,7 +96,7 @@ private fun TimerCard(
     val t = item.timer
     // A RUNNING timer past its end shows as done right away, before the alarm updates the row.
     val done = t.state == TimerState.FINISHED || TimerLogic.isDue(t, item.nowMillis)
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(t.label.ifBlank { "Timer" }, style = MaterialTheme.typography.titleMedium)

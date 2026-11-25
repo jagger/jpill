@@ -6,6 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ## [Unreleased]
 
 ### Added
+- **Home-screen widget** (4x2, as-needed medicines). A thin ring per medicine in its own colour fills as the wait ends, with the ready time ("Ready at 9:41 PM") and a Take now button. A ready medicine is logged in one tap; one that is waiting, at its daily max or sharing an ingredient opens the app's early-dose confirmation. Redraws after every dose and when a wait ends.
 - **App lock.** Optional fingerprint / face / phone-PIN prompt when jPill opens (Home menu > Privacy), with a timing choice (immediately, 30 s, 1, 5 or 15 min). A cold start always asks. The recent-apps card hides your medicines while the lock is on, and the lock turns itself off if the phone's screen lock is removed so you can't be locked out.
 - **Hide medicine names on the lock screen.** Notifications show "Medication reminder" while the phone is locked; Taken, Skip and Snooze still work without unlocking.
 - The Privacy screen explains why data is not encrypted: background reminders can't use a fingerprint-gated key, and Keystore keys don't survive restoring a backup.
@@ -14,6 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Changed
 - **Smaller medicine tiles on Home.** Tighter padding, smaller text and icon, the dose time shares a line with the dose, and the Skip/Taken buttons are shorter. An as-needed tile now shows its status and "Take now" on one row. Roughly four tiles fit on a screen instead of two or three.
+
+### Changed
+- **New look across the app:** graphite-blue dark and light themes with one ice-blue accent, flat outlined cards, larger corner radii and a lighter type scale. Pill icons are lightened on the dark theme so dark colours stay visible.
+
+### Fixed
+- A dose taken up to 2 hours before its due time is no longer logged as Missed afterwards (the missed-dose check now uses the same early window, per schedule).
 
 ## [0.4.1] - 2026-11-24
 

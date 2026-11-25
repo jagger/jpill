@@ -16,7 +16,8 @@ import javax.inject.Singleton
 class ScheduleManager @Inject constructor(
     private val pillRepository: PillRepository,
     private val alarmScheduler: AlarmScheduler,
-    private val refillState: RefillState
+    private val refillState: RefillState,
+    private val widgetRefresher: com.jagger.timer.widget.WidgetRefresher
 ) {
 
     suspend fun getUpcomingDoses(hours: Long = 24): List<TimelineEntry> {
@@ -122,6 +123,7 @@ class ScheduleManager @Inject constructor(
     }
 
     suspend fun refreshAlarmsForPill(pill: PillEntity) {
+        widgetRefresher.update()
         refreshRefillAlarm(pill.id)
         if (pill.asNeeded) refreshCooldownAlarm(pill)
         val schedules = pillRepository.getSchedulesForPill(pill.id).first()
