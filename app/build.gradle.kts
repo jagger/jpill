@@ -9,7 +9,7 @@ plugins {
 }
 
 // Single source of truth for the app version (SemVer). Bump here, add a CHANGELOG.md entry, tag vX.Y.Z.
-val appVersion = "0.8.1"
+val appVersion = "0.9.0"
 
 // Release signing: the keystore lives OUTSIDE the repository. Put its details in keystore.properties (gitignored)
 // at the project root: storeFile, storePassword, keyAlias, keyPassword. Without it, assembleRelease is unsigned.
