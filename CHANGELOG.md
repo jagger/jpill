@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **About screen** (Settings > About): version, a link to the project on GitHub, a link to report problems or suggest features, a Ko-fi link to support jPill, the GPL notice with the full GNU General Public License v3 text built in, the medical disclaimer and credits.
+- **Open-source release preparation:** jPill is licensed under the GNU GPL v3 or later (`LICENSE`, and an SPDX identifier on every source file). New `README.md` (features, privacy, medical disclaimer, build steps), `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, and a GitHub funding link.
+
 ## [0.6.1] - 2026-11-24
 
 ### Changed

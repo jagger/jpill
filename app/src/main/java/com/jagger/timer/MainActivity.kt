@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer
 
 import android.Manifest
@@ -33,7 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.jagger.timer.core.settings.AppSettings
 import com.jagger.timer.core.util.AppLockPolicy
+import com.jagger.timer.settings.ui.AboutScreen
 import com.jagger.timer.settings.ui.AppearanceScreen
+import com.jagger.timer.settings.ui.LicenseScreen
 import com.jagger.timer.settings.ui.PrivacyScreen
 import com.jagger.timer.settings.ui.SettingsHomeScreen
 import javax.inject.Inject
@@ -128,11 +131,21 @@ class MainActivity : FragmentActivity() {
                         SettingsHomeScreen(
                             onNavigateBack = { navController.popBackStack() },
                             onAppearance = { navController.navigate("settings/appearance") },
-                            onPrivacy = { navController.navigate("settings/privacy") }
+                            onPrivacy = { navController.navigate("settings/privacy") },
+                            onAbout = { navController.navigate("settings/about") }
                         )
                     }
                     composable("settings/appearance") {
                         AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/about") {
+                        AboutScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onLicense = { navController.navigate("settings/about/license") }
+                        )
+                    }
+                    composable("settings/about/license") {
+                        LicenseScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("settings/privacy") {
                         PrivacyScreen(

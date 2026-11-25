@@ -37,6 +37,14 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 - To release: move `[Unreleased]` entries under a new `[X.Y.Z] - date` heading, bump `appVersion`, update the compare links, merge via PR, then tag the merge commit `vX.Y.Z` and push the tag.
 - Bump MINOR for features, PATCH for fixes. Any Room schema change needs a `Migration` (never destructive) and a changelog note.
 
+## Open Source
+
+- Licensed **GPL-3.0-or-later**. `LICENSE` is the full GPLv3 text; `app/src/main/assets/LICENSE.txt` is a byte-for-byte copy shown in Settings > About > "Read the full license". `LicenseTextTest` fails if they drift apart, so update both together (you should never need to).
+- Every Kotlin file starts with `// SPDX-License-Identifier: GPL-3.0-or-later`. Add it to new files.
+- The app declares **no `INTERNET` permission** and the README, About screen and CONTRIBUTING all promise "no network". Do not add one without a design discussion; About only opens links in the user's browser.
+- About links (project page, issues, Ko-fi) live in `ProjectLinks` in `settings/ui/AboutScreen.kt`. `.github/FUNDING.yml` carries the same Ko-fi id.
+- Public-facing docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates. Keep real health data out of issues, tests, fixtures and screenshots.
+
 ## Architecture
 
 MVVM with Android Architecture Components:
