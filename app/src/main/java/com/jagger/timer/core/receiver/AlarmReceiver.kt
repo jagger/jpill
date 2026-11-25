@@ -74,7 +74,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, -1L)
 
         when (action) {
-            Intent.ACTION_BOOT_COMPLETED -> {
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
                 val pendingResult = goAsync()
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {

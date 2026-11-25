@@ -9,6 +9,9 @@ import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Identical dose logs this close together are one dose tapped twice. */
+const val DUPLICATE_WINDOW_MILLIS = 10_000L
+
 @Dao
 interface PillDao {
     /** Active (non-archived) pills: what the home screen, alarms and boot restore work with. */
@@ -119,6 +122,13 @@ interface PillDao {
      */
     @Transaction
     suspend fun logDoseAndAdjustSupply(log: DoseLogEntity): Long {
+        // A double tap (or a tap plus the notification button) must not log the same dose twice.
+        if (log.status != DoseStatus.MISSED) {
+            val dup = findRecentDuplicate(
+                log.pillId, log.status, log.scheduleId, log.timestamp - DUPLICATE_WINDOW_MILLIS, log.timestamp + DUPLICATE_WINDOW_MILLIS
+            )
+            if (dup != null) return dup
+        }
         val id = insertDoseLog(log)
         if (log.status == DoseStatus.TAKEN) {
             val pill = getPillById(log.pillId)
@@ -128,6 +138,56 @@ interface PillDao {
             }
         }
         return id
+    }
+
+    @Query("""
+        SELECT id FROM dose_logs
+        WHERE pillId = :pillId AND status = :status AND scheduleId IS :scheduleId
+          AND timestamp BETWEEN :from AND :to
+        LIMIT 1
+    """)
+    suspend fun findRecentDuplicate(pillId: Long, status: DoseStatus, scheduleId: Long?, from: Long, to: Long): Long?
+
+    @Query("SELECT * FROM dose_logs WHERE id = :logId")
+    suspend fun getDoseLogById(logId: Long): DoseLogEntity?
+
+    @Update
+    suspend fun updateDoseLog(log: DoseLogEntity)
+
+    @Query("DELETE FROM dose_logs WHERE id = :logId")
+    suspend fun deleteDoseLogById(logId: Long)
+
+    /** Deletes a dose log; if it was a TAKEN dose on a pill that tracks supply, the tablets go back. */
+    @Transaction
+    suspend fun deleteDoseLogAndRestoreSupply(logId: Long): DoseLogEntity? {
+        val old = getDoseLogById(logId) ?: return null
+        deleteDoseLogById(logId)
+        if (old.status == DoseStatus.TAKEN) adjustSupplyBy(old.pillId, +1)
+        return old
+    }
+
+    /**
+     * Rewrites a dose log's status, time and amount, keeping supply consistent: a log that stops being TAKEN gives
+     * its tablets back, one that becomes TAKEN uses them.
+     */
+    @Transaction
+    suspend fun editDoseLogAdjustingSupply(logId: Long, status: DoseStatus, timestamp: Long, amount: Double?): DoseLogEntity? {
+        val old = getDoseLogById(logId) ?: return null
+        val new = old.copy(status = status, timestamp = timestamp, amount = amount)
+        updateDoseLog(new)
+        if (old.status == DoseStatus.TAKEN && status != DoseStatus.TAKEN) adjustSupplyBy(old.pillId, +1)
+        if (old.status != DoseStatus.TAKEN && status == DoseStatus.TAKEN) adjustSupplyBy(old.pillId, -1)
+        return new
+    }
+
+    private suspend fun adjustSupplyBy(pillId: Long, direction: Int) {
+        val pill = getPillById(pillId) ?: return
+        val supply = pill.supplyCount ?: return
+        updateSupply(
+            pillId,
+            if (direction > 0) SupplyCalculator.beforeDose(supply, pill.tabletsPerDose)
+            else SupplyCalculator.afterDose(supply, pill.tabletsPerDose)
+        )
     }
 
     @Query("SELECT * FROM dose_logs WHERE pillId = :pillId ORDER BY timestamp DESC")

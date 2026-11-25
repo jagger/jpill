@@ -33,6 +33,7 @@ class SupplyCalculatorTest {
 
     @Test fun afterDose_subtractsTablets() = assertEquals(28.0, SupplyCalculator.afterDose(30.0, 2.0), 0.0)
     @Test fun afterDose_halfTablet() = assertEquals(29.5, SupplyCalculator.afterDose(30.0, 0.5), 0.0)
+    @Test fun beforeDose_addsTabletsBack() = assertEquals(30.0, SupplyCalculator.beforeDose(28.0, 2.0), 0.0)
     @Test fun afterDose_floorsAtZero() = assertEquals(0.0, SupplyCalculator.afterDose(1.0, 2.0), 0.0)
 
     @Test fun dosesPerDay_dailyAndInterval() {

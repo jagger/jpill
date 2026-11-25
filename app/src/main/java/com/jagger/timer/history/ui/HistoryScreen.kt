@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.history.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -59,6 +60,7 @@ fun HistoryScreen(
     val pillFilter by viewModel.pillFilter.collectAsState()
     val statusFilter by viewModel.statusFilter.collectAsState()
     var menuOpen by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<DoseHistoryRow?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -82,6 +84,15 @@ fun HistoryScreen(
             )
         }
     ) { innerPadding ->
+        editing?.let { row ->
+            HistoryEditDialog(
+                row = row,
+                zone = zone,
+                onSave = { status, ts, amount -> viewModel.editLog(row, status, ts, amount); editing = null },
+                onDelete = { viewModel.deleteLog(row); editing = null },
+                onDismiss = { editing = null }
+            )
+        }
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -140,7 +151,7 @@ fun HistoryScreen(
                             )
                         }
                         items(group.rows.size, key = { "r_" + group.rows[it].logId }) { i ->
-                            HistoryRow(group.rows[i], zone)
+                            HistoryRow(group.rows[i], zone, onLongClick = { editing = group.rows[i] })
                             if (i < group.rows.size - 1) HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
                     }
@@ -150,15 +161,18 @@ fun HistoryScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun HistoryRow(row: DoseHistoryRow, zone: ZoneId) {
+private fun HistoryRow(row: DoseHistoryRow, zone: ZoneId, onLongClick: () -> Unit) {
     val statusColor: Color = when (row.status) {
         DoseStatus.TAKEN -> MaterialTheme.colorScheme.primary
         DoseStatus.SKIPPED -> MaterialTheme.colorScheme.onSurfaceVariant
         DoseStatus.MISSED -> MaterialTheme.colorScheme.error
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth()
+            .combinedClickable(onLongClickLabel = "Edit or delete", onLongClick = onLongClick, onClick = {})
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

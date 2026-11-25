@@ -4,6 +4,7 @@ package com.jagger.timer.core.data.repository
 import com.jagger.timer.core.data.local.dao.DoseHistoryRow
 import com.jagger.timer.core.data.local.dao.PillDao
 import com.jagger.timer.core.data.local.entity.DoseLogEntity
+import com.jagger.timer.core.data.local.entity.DoseStatus
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 import kotlinx.coroutines.flow.Flow
@@ -51,6 +52,11 @@ class PillRepository @Inject constructor(
 
     /** Logs a dose; a TAKEN dose also decrements the pill's supply, atomically. */
     suspend fun logDose(log: DoseLogEntity): Long = pillDao.logDoseAndAdjustSupply(log)
+
+    suspend fun deleteDoseLog(logId: Long): DoseLogEntity? = pillDao.deleteDoseLogAndRestoreSupply(logId)
+
+    suspend fun editDoseLog(logId: Long, status: DoseStatus, timestamp: Long, amount: Double?): DoseLogEntity? =
+        pillDao.editDoseLogAdjustingSupply(logId, status, timestamp, amount)
 
     suspend fun setSupply(pillId: Long, supply: Double?) = pillDao.updateSupply(pillId, supply)
 

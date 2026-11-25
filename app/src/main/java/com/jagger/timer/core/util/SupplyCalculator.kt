@@ -17,6 +17,9 @@ object SupplyCalculator {
     fun afterDose(supply: Double, tabletsPerDose: Double): Double =
         (supply - tabletsPerDose).coerceAtLeast(0.0)
 
+    /** Supply after a taken dose of [tabletsPerDose] is undone (log deleted or changed). */
+    fun beforeDose(supply: Double, tabletsPerDose: Double): Double = supply + tabletsPerDose
+
     /** Average doses per day for one schedule. */
     fun dosesPerDay(schedule: ScheduleEntity): Double = when (schedule.type) {
         ScheduleType.INTERVAL -> schedule.intervalMinutes?.takeIf { it > 0 }?.let { 1440.0 / it } ?: 0.0

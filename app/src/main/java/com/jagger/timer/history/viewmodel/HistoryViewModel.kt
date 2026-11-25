@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val pillRepository: PillRepository
+    private val pillRepository: PillRepository,
+    private val scheduleManager: com.jagger.timer.core.util.ScheduleManager
 ) : ViewModel() {
 
     companion object {
@@ -66,6 +68,25 @@ class HistoryViewModel @Inject constructor(
     suspend fun exportCsv(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
         val all = pillRepository.getHistory(_pillFilter.value, _statusFilter.value?.name ?: "", Int.MAX_VALUE).first()
         return com.jagger.timer.core.util.HistoryCsv.build(all, zone)
+    }
+
+    /** Changes a logged dose's status, time and amount, then re-plans that medicine's reminders. */
+    fun editLog(row: DoseHistoryRow, status: DoseStatus, timestamp: Long, amount: Double?) {
+        viewModelScope.launch {
+            pillRepository.editDoseLog(row.logId, status, timestamp, amount)
+            replan(row.pillId)
+        }
+    }
+
+    fun deleteLog(row: DoseHistoryRow) {
+        viewModelScope.launch {
+            pillRepository.deleteDoseLog(row.logId)
+            replan(row.pillId)
+        }
+    }
+
+    private suspend fun replan(pillId: Long) {
+        pillRepository.getPillById(pillId)?.takeIf { !it.isArchived }?.let { scheduleManager.refreshAlarmsForPill(it) }
     }
 
     fun setPillFilter(pillId: Long) { _pillFilter.value = pillId }
