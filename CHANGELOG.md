@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **docs/INSTALL.md**: a full sideloading guide (download, allowing the install, Play Protect, reminder reliability settings, verifying the download, updating, uninstalling, troubleshooting), linked from the README and every release.
+
+### Changed
+- **History heatmap redesigned in the style of GitHub's contribution graph, now covering 90 days:** small tight squares, weeks as columns and weekdays as rows (Sunday first, Mon/Wed/Fri labelled), with one line underneath giving the overall percentage and a Less/More legend. Tap a square for that day's numbers.
+
+### Fixed
+- The History list no longer opens scrolled past the heatmap: it now has its full size from the first frame instead of growing once the data loads.
+
 ## [0.8.0] - 2026-11-25
 
 ### Added

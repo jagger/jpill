@@ -29,7 +29,7 @@ class HistoryViewModel @Inject constructor(
     companion object {
         const val ALL_PILLS = -1L
         private const val LIMIT = 1000
-        const val HEATMAP_DAYS = 30
+        const val HEATMAP_DAYS = 90
     }
 
     private val _pillFilter = MutableStateFlow(ALL_PILLS)
@@ -46,7 +46,7 @@ class HistoryViewModel @Inject constructor(
         .flatMapLatest { (p, s) -> pillRepository.getHistory(p, s?.name ?: "", LIMIT) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Daily adherence for the last 30 days, for the heatmap. Follows the medication filter but not the status filter. */
+    /** Daily adherence for the last 90 days, for the heatmap. Follows the medication filter but not the status filter. */
     val adherence: StateFlow<List<com.jagger.timer.core.util.DayAdherence>> = _pillFilter
         .flatMapLatest { p ->
             val zone = java.time.ZoneId.systemDefault()
@@ -55,7 +55,12 @@ class HistoryViewModel @Inject constructor(
                 com.jagger.timer.core.util.AdherenceCalc.last(HEATMAP_DAYS, rows, zone, java.time.LocalDate.now(zone))
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        // Start with 30 empty days (not an empty list): the heatmap then has its full height from the first frame, so
+        // the list below doesn't jump when the data arrives and push the heatmap off the top of the screen.
+        .stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5000),
+            com.jagger.timer.core.util.AdherenceCalc.last(HEATMAP_DAYS, emptyList(), java.time.ZoneId.systemDefault(), java.time.LocalDate.now())
+        )
 
     /** CSV of everything the current filters match (not just the 1000 rows on screen). */
     suspend fun exportCsv(zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
