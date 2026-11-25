@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.dp
 
 /** Shown once after an update: what changed since the version the user last saw. Cleared with "Got it". */
 @Composable
-fun WhatsNewDialog(releases: List<ReleaseNotes>, onDismiss: () -> Unit) {
+fun WhatsNewDialog(releases: List<ReleaseNotes>, onDismiss: () -> Unit, dismissOnOutsideTap: Boolean = false) {
     AlertDialog(
-        onDismissRequest = {}, // must be cleared explicitly, so it isn't lost by a stray tap
+        // After an update it must be cleared explicitly, so a stray tap can't lose it; from About it closes freely.
+        onDismissRequest = { if (dismissOnOutsideTap) onDismiss() },
         title = { Text("What's new in jPill") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -51,6 +52,11 @@ fun WhatsNewDialog(releases: List<ReleaseNotes>, onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } }
     )
 }
+
+/** The bundled changelog's releases, newest first as written; empty if the asset can't be read. */
+fun loadBundledReleases(context: android.content.Context): List<ReleaseNotes> = runCatching {
+    WhatsNew.parse(context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() })
+}.getOrDefault(emptyList())
 
 /** Minimal inline markdown: **bold** becomes bold, `code` and [text](url) lose their markup. */
 internal fun markdown(text: String): AnnotatedString {
