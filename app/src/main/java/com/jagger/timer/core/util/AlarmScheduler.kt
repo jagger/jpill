@@ -11,6 +11,7 @@ import com.jagger.timer.core.receiver.AlarmReceiver
 import com.jagger.timer.core.receiver.safeNotificationId
 import android.app.NotificationManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.jagger.timer.reminderlog.ReminderLog
 import java.time.LocalDateTime
 import java.time.ZoneId
 import javax.inject.Inject
@@ -44,7 +45,21 @@ class AlarmScheduler @Inject constructor(
 
         val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerAtMillis, pendingIntent)
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        ReminderLog.log(
+            "ARM", "pill=${pill.id} (${pill.name}) sched=${schedule.id} fires=${ReminderLog.clock(triggerAtMillis)} " +
+                "exactAllowed=${alarmManager.canScheduleExactAlarms()}"
+        )
     }
+
+    /** True if this schedule's reminder alarm is currently registered with Android. */
+    fun isArmed(scheduleId: Long): Boolean = PendingIntent.getBroadcast(
+        context, scheduleId.toInt(),
+        Intent(context, AlarmReceiver::class.java).apply { action = "com.jagger.timer.ACTION_PILL_REMINDER" },
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+    ) != null
+
+    /** Android's own next alarm-clock time (what the status-bar alarm icon shows), or null. */
+    fun nextAlarmClockMillis(): Long? = alarmManager.nextAlarmClock?.triggerTime
 
     /** Removes any notification this pill already posted (scheduled reminder, cooldown-done, refill). */
     fun cancelPillNotifications(pillId: Long) {
@@ -87,6 +102,7 @@ class AlarmScheduler @Inject constructor(
             triggerAtMillis,
             missedCheckPendingIntent(pillId, scheduleId, dueAtMillis, PendingIntent.FLAG_UPDATE_CURRENT)!!
         )
+        ReminderLog.log("ARM missed-check", "pill=$pillId sched=$scheduleId due=${ReminderLog.clock(dueAtMillis)} checks=${ReminderLog.clock(triggerAtMillis)}")
     }
 
     fun cancelMissedCheck(scheduleId: Long) {

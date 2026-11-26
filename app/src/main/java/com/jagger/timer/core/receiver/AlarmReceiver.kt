@@ -23,7 +23,7 @@ import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.DoseStatus
 import com.jagger.timer.core.data.local.entity.doseAmount
 import com.jagger.timer.core.data.repository.PillRepository
-import com.jagger.timer.core.service.PillReminderService
+import com.jagger.timer.reminderlog.ReminderLog
 import com.jagger.timer.core.util.AlarmScheduler
 import com.jagger.timer.core.util.ScheduleManager
 import com.jagger.timer.core.settings.AppSettings
@@ -72,6 +72,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
         val pillId = intent.getLongExtra(EXTRA_PILL_ID, -1L)
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, -1L)
+        ReminderLog.log("RECEIVED", "${action.substringAfterLast('.')} pill=$pillId sched=$scheduleId")
 
         when (action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
@@ -79,6 +80,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {
+                        ReminderLog.log("REARM ALL", "reason=${action.substringAfterLast('.')}")
                         scheduleManager.refreshAlarms()
                         timerManager.restoreAfterBoot().forEach { postTimerDoneNotification(context, it) }
                     } finally {
@@ -86,15 +88,21 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                 }
             }
-            ACTION_PILL_REMINDER -> startService(context, intent)
+            ACTION_PILL_REMINDER -> handleReminder(context, pillId, scheduleId, intent.getStringExtra("PILL_NAME") ?: "Medication")
             ACTION_TAKEN -> handleDoseAction(context, pillId, scheduleId, DoseStatus.TAKEN)
             ACTION_SKIPPED -> handleDoseAction(context, pillId, scheduleId, DoseStatus.SKIPPED)
             ACTION_SNOOZE -> handleSnoozeAction(context, pillId, scheduleId)
             ACTION_COOLDOWN_DONE -> handleCooldownDone(context, pillId)
             ACTION_REFILL_DUE -> handleRefillDue(context, pillId)
             ACTION_TIMER_DONE -> handleTimerDone(context, intent.getLongExtra(EXTRA_TIMER_ID, -1L))
-            ACTION_MISSED_CHECK -> handleMissedCheck(pillId, scheduleId, intent.getLongExtra(EXTRA_DUE_AT, 0L))
+            ACTION_MISSED_CHECK -> handleMissedCheck(context, pillId, scheduleId, intent.getLongExtra(EXTRA_DUE_AT, 0L))
         }
+    }
+
+    private fun handleReminder(context: Context, pillId: Long, scheduleId: Long, pillName: String) {
+        if (pillId == -1L) return
+        val posted = ReminderNotifier.post(context, pillId, scheduleId, pillName, appSettings.hideNamesOnLockScreen)
+        if (!posted) ReminderLog.log("REMINDER LOST", "pill=$pillId sched=$scheduleId notification was not posted")
     }
 
     private fun handleDoseAction(context: Context, pillId: Long, scheduleId: Long, status: DoseStatus) {
@@ -104,6 +112,7 @@ class AlarmReceiver : BroadcastReceiver() {
             try {
                 cancelNotification(context, pillId)
                 val pill = pillRepository.getPillById(pillId)
+                ReminderLog.log("DOSE ACTION", "${status.name} pill=$pillId sched=$scheduleId")
                 pillRepository.logDose(
                     DoseLogEntity(
                         pillId = pillId,
@@ -114,7 +123,6 @@ class AlarmReceiver : BroadcastReceiver() {
                     )
                 )
                 pill?.let { scheduleManager.refreshAlarmsForPill(it) }
-                context.stopService(Intent(context, PillReminderService::class.java))
             } finally {
                 pendingResult.finish()
             }
@@ -149,7 +157,7 @@ class AlarmReceiver : BroadcastReceiver() {
      * A scheduled dose's grace window ended. If nothing was logged for the pill since it came due, record it as
      * MISSED, then re-plan so the next dose is scheduled even though this reminder was ignored.
      */
-    private fun handleMissedCheck(pillId: Long, scheduleId: Long, dueAt: Long) {
+    private fun handleMissedCheck(context: Context, pillId: Long, scheduleId: Long, dueAt: Long) {
         if (pillId == -1L || dueAt <= 0L) return
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
@@ -168,6 +176,15 @@ class AlarmReceiver : BroadcastReceiver() {
                         nowMillis = System.currentTimeMillis()
                     )
                 ) {
+                    val firedAt = ReminderNotifier.lastFired(context, scheduleId)
+                    val reminderFired = firedAt >= dueAt - maxOf(schedule.reminderAdvanceMinutes, 1) * 60_000L - 5 * 60_000L
+                    ReminderLog.log(
+                        if (reminderFired) "MISSED" else "MISSED, NO ALARM",
+                        "pill=$pillId sched=$scheduleId due=${ReminderLog.clock(dueAt)} lastReminderFired=" +
+                            (if (firedAt > 0) ReminderLog.clock(firedAt) else "never") +
+                            if (reminderFired) " (reminder fired, dose ignored)" else " (the reminder alarm never fired)"
+                    )
+                    cancelNotification(context, pillId) // the reminder is stale now
                     pillRepository.logDose(
                         DoseLogEntity(
                             pillId = pillId,
@@ -321,11 +338,11 @@ class AlarmReceiver : BroadcastReceiver() {
                 val pill = pillRepository.getPillById(pillId)
                 val schedules = pillRepository.getSchedulesForPill(pillId).first()
                 val schedule = schedules.find { it.id == scheduleId }
+                ReminderLog.log("SNOOZE", "pill=$pillId sched=$scheduleId found=${pill != null && schedule != null}")
                 if (pill != null && schedule != null) {
                     alarmScheduler.scheduleAlarm(pill, schedule, LocalDateTime.now().plusMinutes(10))
                 }
                 // If schedule not found, silently cancel — alarm will re-fire at its next scheduled time
-                context.stopService(Intent(context, PillReminderService::class.java))
             } finally {
                 pendingResult.finish()
             }
@@ -335,17 +352,6 @@ class AlarmReceiver : BroadcastReceiver() {
     private fun cancelNotification(context: Context, pillId: Long) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(safeNotificationId(pillId))
-    }
-
-    private fun startService(context: Context, intent: Intent) {
-        val serviceIntent = Intent(context, PillReminderService::class.java).apply {
-            putExtras(intent)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent)
-        } else {
-            context.startService(serviceIntent)
-        }
     }
 }
 

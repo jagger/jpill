@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
@@ -60,6 +62,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var appSettings: AppSettings
+    @Inject lateinit var scheduleManager: com.jagger.timer.core.util.ScheduleManager
 
     /** Starts locked, so a cold start always asks (when the lock is on). */
     private var locked by mutableStateOf(true)
@@ -97,6 +100,8 @@ class MainActivity : FragmentActivity() {
 
         checkNotificationPermission()
         loadWhatsNew()
+        com.jagger.timer.reminderlog.ReminderLog.log("APP OPEN", "version=${currentVersionCode()} " + com.jagger.timer.core.receiver.ReminderNotifier.deliveryState(this))
+        lifecycleScope.launch { scheduleManager.rearmMissing("app-open") }
 
         setContent {
             val themeMode by appSettings.themeModeFlow.collectAsState()
@@ -157,11 +162,15 @@ class MainActivity : FragmentActivity() {
                             onPrivacy = { navController.navigate("settings/privacy") },
                             onBeta = { navController.navigate("settings/beta") },
                             onReliability = { navController.navigate("settings/reliability") },
+                            onReminderLog = { navController.navigate("settings/reminderlog") },
                             onAbout = { navController.navigate("settings/about") }
                         )
                     }
                     composable("settings/appearance") {
                         AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/reminderlog") {
+                        com.jagger.timer.reminderlog.ReminderLogScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("settings/reliability") {
                         com.jagger.timer.reliability.ReliabilityScreen(onNavigateBack = { navController.popBackStack() })

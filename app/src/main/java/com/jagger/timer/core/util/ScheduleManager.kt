@@ -85,6 +85,28 @@ class ScheduleManager @Inject constructor(
         }
     }
 
+    /**
+     * Self-heal: re-plans only the medicines that have a schedule with no registered alarm (lost to a force-stop,
+     * an update or an OS cleanup). Cheap enough to run every time the app opens. Returns how many were re-armed.
+     */
+    suspend fun rearmMissing(reason: String): Int {
+        var fixed = 0
+        for (pill in pillRepository.getAllPills().first()) {
+            if (pill.asNeeded) continue
+            val missing = pillRepository.getSchedulesForPill(pill.id).first().filter { !alarmScheduler.isArmed(it.id) }
+            if (missing.isNotEmpty()) {
+                com.jagger.timer.reminderlog.ReminderLog.log(
+                    "REARM MISSING", "reason=$reason pill=${pill.id} (${pill.name}) schedules=${missing.map { it.id }}"
+                )
+                refreshAlarmsForPill(pill)
+                fixed++
+            }
+        }
+        com.jagger.timer.reminderlog.ReminderLog.log("ARMED CHECK", "reason=$reason rearmed=$fixed next-alarm-clock=" +
+            (alarmScheduler.nextAlarmClockMillis()?.let { com.jagger.timer.reminderlog.ReminderLog.clock(it) } ?: "none"))
+        return fixed
+    }
+
     /** (Re)schedules the "available again" alarm for an as-needed pill, or cancels it if already ready. */
     suspend fun refreshCooldownAlarm(pill: PillEntity) {
         if (!pill.asNeeded) {
@@ -138,7 +160,10 @@ class ScheduleManager @Inject constructor(
                 // If the user wants a reminder 30 min before, we should actually schedule that
                 val reminderTime = it.minusMinutes(schedule.reminderAdvanceMinutes.toLong())
                 val finalTrigger = if (reminderTime.isAfter(LocalDateTime.now())) reminderTime else it
-                
+                com.jagger.timer.reminderlog.ReminderLog.log(
+                    "PLAN", "pill=${pill.id} sched=${schedule.id} nextDue=$it advanceMin=${schedule.reminderAdvanceMinutes} trigger=$finalTrigger"
+                )
+
                 alarmScheduler.scheduleAlarm(pill, schedule, finalTrigger)
 
                 // If this dose is ignored, log it as missed after the grace window and re-plan the next one.

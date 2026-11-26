@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Reminder log** (Settings > Reminder log). A trace of everything the reminder machinery does: every alarm armed (and for when), every alarm that fired, every notification posted and whether Android accepted it, the Do Not Disturb state at that moment, Taken/Skip/Snooze taps, and when a dose was logged as missed because its reminder alarm never fired. The screen also lists the next 48 hours of doses with whether each one's alarm is actually registered with Android, and has **Re-arm all**, **Share** and **Clear**. The log stays on the phone in jPill's own folder.
+- **Self-healing alarms.** Each time jPill opens it re-arms any scheduled medicine whose alarm is missing.
+
+### Changed
+- **Reminders are posted directly by the alarm instead of through a foreground service.** Two medicines due at the same minute used to replace each other's notification, tapping Taken on one dismissed the other, and a refused service start lost the reminder without a trace. Each medicine now gets its own notification, and a failure to post is logged. The foreground-service permissions are gone from the manifest. A reminder that is ignored is now cleared when its dose is logged as missed.
+
 ## [0.10.0] - 2026-11-25
 
 ### Added
