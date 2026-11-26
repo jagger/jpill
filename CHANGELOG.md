@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-26
+
 ### Added
 - **Reminder log** (Settings > Reminder log). A trace of everything the reminder machinery does: every alarm armed (and for when), every alarm that fired, every notification posted and whether Android accepted it, the Do Not Disturb state at that moment, Taken/Skip/Snooze taps, and when a dose was logged as missed because its reminder alarm never fired. The screen also lists the next 48 hours of doses with whether each one's alarm is actually registered with Android, and has **Re-arm all**, **Share** and **Clear**. The log stays on the phone in jPill's own folder.
 - **Self-healing alarms.** Each time jPill opens it re-arms any scheduled medicine whose alarm is missing.
@@ -200,7 +202,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/jagger/jpill/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/jagger/jpill/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/jagger/jpill/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/jagger/jpill/compare/v0.9.0...v0.9.1
