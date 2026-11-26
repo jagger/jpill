@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 /** The Settings hub: one row per group of options. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit, onBeta: () -> Unit, onReliability: () -> Unit, onAbout: () -> Unit) {
+fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onPrivacy: () -> Unit, onBeta: () -> Unit, onReliability: () -> Unit, onReminderLog: () -> Unit, onAbout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,6 +47,7 @@ fun SettingsHomeScreen(onNavigateBack: () -> Unit, onAppearance: () -> Unit, onP
             SettingsRow(Icons.Default.Palette, "Appearance", "Light, dark or follow your phone", onAppearance)
             SettingsRow(Icons.Default.Lock, "Privacy and data", "App lock, lock-screen names, delete all data", onPrivacy)
             SettingsRow(Icons.Default.NotificationsActive, "Reminder reliability", "Check that notifications, battery and alarms let reminders arrive", onReliability)
+            SettingsRow(Icons.Default.NotificationsActive, "Reminder log", "What is armed, what fired, and why a reminder may have been missed", onReminderLog)
             SettingsRow(Icons.Default.Science, "Beta features", "Try new features before they are finished (NFC tags)", onBeta)
             SettingsRow(Icons.Default.Info, "About", "Version, project page, license, support jPill", onAbout)
         }
