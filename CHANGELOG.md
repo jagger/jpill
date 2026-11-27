@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Changed
+- **Timed doses ring like an alarm.** Reminders for a dose with a specific time (Fixed time, Interval) now play your phone's alarm sound and vibrate on the alarm volume, so silent mode and Do Not Disturb (which allows alarms) no longer swallow them. This uses a new notification channel, "Pill Reminders"; the old one is removed.
+- **Doses with no exact time (a Morning/Evening/Night slot) get a quieter reminder.** They use a separate channel, "Daily doses (no set time)": a normal notification sound, no full-screen takeover, and the notification stays until you tap Taken or Skip. A late dose is fine, so a slot dose is only logged as missed after 6 hours instead of 1.
+- **The reminder stays until you deal with it.** It is no longer cleared when its dose is logged as missed, and it now disappears as soon as you mark the dose Taken or Skipped inside the app (before, it lingered).
+
 ## [0.10.1] - 2026-11-26
 
 ### Added

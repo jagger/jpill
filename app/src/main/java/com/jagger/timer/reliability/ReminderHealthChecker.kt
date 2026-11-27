@@ -23,8 +23,10 @@ class ReminderHealthChecker @Inject constructor(@ApplicationContext private val 
         val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         val alarms = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         // Notifications count as off if they are off for the app or the reminder channel itself was switched off.
-        val reminderChannel = nm.getNotificationChannel("pill_reminders")
-        val channelBlocked = reminderChannel != null && reminderChannel.importance == NotificationManager.IMPORTANCE_NONE
+        val channelBlocked = listOf(
+            com.jagger.timer.core.receiver.ReminderNotifier.CHANNEL_ID,
+            com.jagger.timer.core.receiver.ReminderNotifier.GENERAL_CHANNEL_ID
+        ).any { id -> nm.getNotificationChannel(id)?.importance == NotificationManager.IMPORTANCE_NONE }
         return ReminderHealth(
             notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled() && !channelBlocked,
             batteryUnrestricted = power.isIgnoringBatteryOptimizations(context.packageName),

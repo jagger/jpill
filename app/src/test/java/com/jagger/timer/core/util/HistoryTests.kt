@@ -64,6 +64,9 @@ class MissedDoseDetectorTest {
 
     @Test fun graceIsAnHourByDefault() = assertEquals(60 * min, MissedDoseDetector.graceMillis(sched()))
 
+    @Test fun slotDosesGetAMuchLongerGrace_aLateMorningDoseIsStillFine() =
+        assertEquals(6 * 60 * min, MissedDoseDetector.graceMillis(sched(ScheduleType.TIME_SLOT)))
+
     @Test fun graceIsCappedAtHalfAShortInterval() {
         assertEquals(60 * min, MissedDoseDetector.graceMillis(sched(ScheduleType.INTERVAL, 12 * 60)))
         assertEquals(60 * min, MissedDoseDetector.graceMillis(sched(ScheduleType.INTERVAL, 120)))

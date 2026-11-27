@@ -9,5 +9,6 @@ class TimerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.jagger.timer.reminderlog.ReminderLog.init(this)
+        com.jagger.timer.core.receiver.ReminderNotifier.ensureChannel(this)
     }
 }

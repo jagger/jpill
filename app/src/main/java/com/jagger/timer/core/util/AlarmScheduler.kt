@@ -61,6 +61,12 @@ class AlarmScheduler @Inject constructor(
     /** Android's own next alarm-clock time (what the status-bar alarm icon shows), or null. */
     fun nextAlarmClockMillis(): Long? = alarmManager.nextAlarmClock?.triggerTime
 
+    /** Removes just the scheduled-dose reminder notification. */
+    fun cancelDueReminder(pillId: Long) {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(safeNotificationId(pillId))
+        ReminderLog.log("DISMISS", "pill=$pillId reminder cleared (dose handled in the app)")
+    }
+
     /** Removes any notification this pill already posted (scheduled reminder, cooldown-done, refill). */
     fun cancelPillNotifications(pillId: Long) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

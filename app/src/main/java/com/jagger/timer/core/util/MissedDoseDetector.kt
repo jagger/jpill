@@ -10,6 +10,7 @@ import com.jagger.timer.core.data.local.entity.ScheduleType
  */
 object MissedDoseDetector {
     const val DEFAULT_GRACE_MINUTES = 60
+    const val SLOT_GRACE_MINUTES = 6 * 60
     private const val MINUTE = 60_000L
 
     /**
@@ -17,6 +18,8 @@ object MissedDoseDetector {
      * than half of an interval schedule's period, so a "every 2 hours" dose isn't still pending when the next is due.
      */
     fun graceMillis(schedule: ScheduleEntity): Long {
+        // A slot dose ("Morning") has no exact time, so a late dose is still fine: wait much longer before calling it missed.
+        if (schedule.type == ScheduleType.TIME_SLOT) return SLOT_GRACE_MINUTES * MINUTE
         val interval = schedule.intervalMinutes
         val cap = if (schedule.type == ScheduleType.INTERVAL && interval != null && interval > 0) interval / 2 else Int.MAX_VALUE
         return minOf(DEFAULT_GRACE_MINUTES, cap).coerceAtLeast(1) * MINUTE

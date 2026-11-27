@@ -181,6 +181,9 @@ class ScheduleManager @Inject constructor(
     /** Clears a pill's posted reminder notifications (e.g. after its dose was logged from an NFC scan). */
     fun dismissReminder(pillId: Long) = alarmScheduler.cancelPillNotifications(pillId)
 
+    /** Clears only this medicine's "time for your dose" reminder (the dose was handled in the app). Refill and "available again" alerts stay. */
+    fun dismissDueReminder(pillId: Long) = alarmScheduler.cancelDueReminder(pillId)
+
     suspend fun archivePill(pill: PillEntity) {
         cancelAlarmsForPill(pill)
         alarmScheduler.cancelPillNotifications(pill.id)
