@@ -161,6 +161,7 @@ class HomeViewModel @Inject constructor(
                 amount = entry.pill.doseAmount()
             )
             pillRepository.logDose(log)
+            scheduleManager.dismissDueReminder(entry.pill.id)
             scheduleManager.refreshAlarmsForPill(entry.pill)
         }
     }
@@ -175,6 +176,7 @@ class HomeViewModel @Inject constructor(
                 amount = entry.pill.doseAmount()
             )
             pillRepository.logDose(log)
+            scheduleManager.dismissDueReminder(entry.pill.id)
             scheduleManager.refreshAlarmsForPill(entry.pill)
         }
     }

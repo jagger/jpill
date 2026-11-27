@@ -101,8 +101,21 @@ class AlarmReceiver : BroadcastReceiver() {
 
     private fun handleReminder(context: Context, pillId: Long, scheduleId: Long, pillName: String) {
         if (pillId == -1L) return
-        val posted = ReminderNotifier.post(context, pillId, scheduleId, pillName, appSettings.hideNamesOnLockScreen)
-        if (!posted) ReminderLog.log("REMINDER LOST", "pill=$pillId sched=$scheduleId notification was not posted")
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                // A dose with no exact time (a "Morning" slot) gets the quieter persistent reminder; anything we
+                // can't identify is treated as a timed dose, so it errs on the side of being noticed.
+                val general = runCatching {
+                    pillRepository.getSchedulesForPill(pillId).first().find { it.id == scheduleId }?.type ==
+                        com.jagger.timer.core.data.local.entity.ScheduleType.TIME_SLOT
+                }.getOrDefault(false)
+                val posted = ReminderNotifier.post(context, pillId, scheduleId, pillName, appSettings.hideNamesOnLockScreen, general)
+                if (!posted) ReminderLog.log("REMINDER LOST", "pill=$pillId sched=$scheduleId notification was not posted")
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 
     private fun handleDoseAction(context: Context, pillId: Long, scheduleId: Long, status: DoseStatus) {
@@ -184,7 +197,6 @@ class AlarmReceiver : BroadcastReceiver() {
                             (if (firedAt > 0) ReminderLog.clock(firedAt) else "never") +
                             if (reminderFired) " (reminder fired, dose ignored)" else " (the reminder alarm never fired)"
                     )
-                    cancelNotification(context, pillId) // the reminder is stale now
                     pillRepository.logDose(
                         DoseLogEntity(
                             pillId = pillId,
@@ -340,7 +352,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val schedule = schedules.find { it.id == scheduleId }
                 ReminderLog.log("SNOOZE", "pill=$pillId sched=$scheduleId found=${pill != null && schedule != null}")
                 if (pill != null && schedule != null) {
-                    alarmScheduler.scheduleAlarm(pill, schedule, LocalDateTime.now().plusMinutes(10))
+                    alarmScheduler.scheduleSnooze(pill, schedule, LocalDateTime.now().plusMinutes(10))
                 }
                 // If schedule not found, silently cancel — alarm will re-fire at its next scheduled time
             } finally {

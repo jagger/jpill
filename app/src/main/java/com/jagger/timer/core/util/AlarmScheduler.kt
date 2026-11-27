@@ -51,6 +51,25 @@ class AlarmScheduler @Inject constructor(
         )
     }
 
+    /**
+     * A snooze is its own one-shot alarm (separate request code), so it never replaces the schedule's regular next
+     * reminder: snoozing this morning's dose can't lose tomorrow's alarm.
+     */
+    fun scheduleSnooze(pill: PillEntity, schedule: ScheduleEntity, at: LocalDateTime) {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = "com.jagger.timer.ACTION_PILL_REMINDER"
+            putExtra("PILL_ID", pill.id)
+            putExtra("PILL_NAME", pill.name)
+            putExtra("SCHEDULE_ID", schedule.id)
+        }
+        val pi = PendingIntent.getBroadcast(
+            context, SNOOZE_REQUEST_BASE + schedule.id.toInt(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val millis = at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(millis, pi), pi)
+        ReminderLog.log("ARM snooze", "pill=${pill.id} sched=${schedule.id} fires=${ReminderLog.clock(millis)}")
+    }
+
     /** True if this schedule's reminder alarm is currently registered with Android. */
     fun isArmed(scheduleId: Long): Boolean = PendingIntent.getBroadcast(
         context, scheduleId.toInt(),
@@ -60,6 +79,12 @@ class AlarmScheduler @Inject constructor(
 
     /** Android's own next alarm-clock time (what the status-bar alarm icon shows), or null. */
     fun nextAlarmClockMillis(): Long? = alarmManager.nextAlarmClock?.triggerTime
+
+    /** Removes just the scheduled-dose reminder notification. */
+    fun cancelDueReminder(pillId: Long) {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(safeNotificationId(pillId))
+        ReminderLog.log("DISMISS", "pill=$pillId reminder cleared (dose handled in the app)")
+    }
 
     /** Removes any notification this pill already posted (scheduled reminder, cooldown-done, refill). */
     fun cancelPillNotifications(pillId: Long) {
@@ -160,7 +185,14 @@ class AlarmScheduler @Inject constructor(
         return PendingIntent.getBroadcast(context, timerId.toInt(), intent, flag or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    private companion object { const val SNOOZE_REQUEST_BASE = 1_000_000 }
+
     fun cancelAlarm(schedule: ScheduleEntity) {
+        PendingIntent.getBroadcast(
+            context, SNOOZE_REQUEST_BASE + schedule.id.toInt(),
+            Intent(context, AlarmReceiver::class.java).apply { action = "com.jagger.timer.ACTION_PILL_REMINDER" },
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )?.let { alarmManager.cancel(it) }
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = "com.jagger.timer.ACTION_PILL_REMINDER"
         }
