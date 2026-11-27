@@ -352,7 +352,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val schedule = schedules.find { it.id == scheduleId }
                 ReminderLog.log("SNOOZE", "pill=$pillId sched=$scheduleId found=${pill != null && schedule != null}")
                 if (pill != null && schedule != null) {
-                    alarmScheduler.scheduleAlarm(pill, schedule, LocalDateTime.now().plusMinutes(10))
+                    alarmScheduler.scheduleSnooze(pill, schedule, LocalDateTime.now().plusMinutes(10))
                 }
                 // If schedule not found, silently cancel — alarm will re-fire at its next scheduled time
             } finally {
