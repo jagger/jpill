@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-27
+
 ### Changed
 - **Settings is tidier.** Reminder log and Beta features now live under **Settings > Developer tools**.
 - **Timer NFC tags are scan-and-go.** A timer tag already carries the timer's name and length, so anyone with jPill can tap it and the timer starts at once: no setup, no confirm tap, and no need to switch on the NFC beta (the beta switch now covers medicine tags only). A phone that has never opened jPill is asked to allow notifications right on the scan card so the timer can alert it. A timer that is already running or paused still asks before restarting.
@@ -216,7 +218,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/jagger/jpill/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/jagger/jpill/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/jagger/jpill/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/jagger/jpill/compare/v0.9.2...v0.10.0
