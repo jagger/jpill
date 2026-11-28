@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     id("com.google.devtools.ksp")
@@ -20,7 +19,9 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "com.jagger.timer"
-    compileSdk = 35
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
 
     defaultConfig {
         applicationId = "com.jagger.timer"
@@ -58,9 +59,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     kotlin {
         jvmToolchain(17)
     }
@@ -73,13 +71,20 @@ android {
 
 // The What's new popup reads the changelog from the app itself (no network), so ship CHANGELOG.md as an asset.
 // Copied at build time so the popup can never drift from the real changelog.
-val changelogAssetsDir = layout.buildDirectory.dir("generated/changelogAssets")
-val copyChangelog by tasks.registering(Copy::class) {
-    from(rootProject.file("CHANGELOG.md"))
-    into(changelogAssetsDir)
+abstract class CopyChangelog : DefaultTask() {
+    @get:InputFile abstract val source: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @TaskAction fun copy() {
+        val dir = outputDir.get().asFile.apply { mkdirs() }
+        source.get().asFile.copyTo(File(dir, "CHANGELOG.md"), overwrite = true)
+    }
 }
-android.sourceSets["main"].assets.srcDir(changelogAssetsDir)
-tasks.named("preBuild") { dependsOn(copyChangelog) }
+val copyChangelog = tasks.register<CopyChangelog>("copyChangelog") {
+    source.set(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+}
+androidComponents {
+    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(copyChangelog, CopyChangelog::outputDir) }
+}
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -100,7 +105,7 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     
     // Room
-    val roomVersion = "2.6.1"
+    val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
