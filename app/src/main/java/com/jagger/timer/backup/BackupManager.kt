@@ -64,6 +64,7 @@ class BackupManager @Inject constructor(
 
             snapshot(safetyCopy)
             eraser.eraseAll() // cancels every alarm and posted notification belonging to the data being replaced
+            replacedInThisProcess = true // from here on, this process holds a closed database and must not touch it
             database.close()
             val live = context.getDatabasePath(DB_NAME)
             listOf("", "-wal", "-shm", "-journal").forEach { File(live.path + it).delete() }
@@ -125,11 +126,17 @@ class BackupManager @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager)
-            .set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 2_000L, pi)
+            .set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + REARM_DELAY_MS, pi)
     }
 
     companion object {
         private const val REARM_REQUEST_CODE = 9_900_001
+        /** Must be longer than the screen waits before closing the app, so the alarm lands in the NEW process. */
+        private const val REARM_DELAY_MS = 5_000L
+
+        /** True once a restore swapped the database file under this process; the process is then stale and about to exit. */
+        @Volatile var replacedInThisProcess = false
+            private set
         private const val SAFETY_COPY_NAME = "pre-restore.db"
         private const val SAFETY_COPY_MAX_AGE_MS = 7L * 24 * 3600 * 1000
 

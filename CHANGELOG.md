@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Fixed
+- **Restoring a backup no longer crashes the app.** After a restore the old process kept running with its database closed, and the re-arm alarm fired in it a few seconds later and crashed it ("Database is closed"). jPill now closes itself right after a restore, a fresh process re-arms every reminder, and a stale process ignores the re-arm request.
+
 ## [0.12.0] - 2026-11-28
 
 ### Added

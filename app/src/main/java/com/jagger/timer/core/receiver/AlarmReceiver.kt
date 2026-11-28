@@ -75,6 +75,11 @@ class AlarmReceiver : BroadcastReceiver() {
         val pillId = intent.getLongExtra(EXTRA_PILL_ID, -1L)
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, -1L)
         ReminderLog.log("RECEIVED", "${action.substringAfterLast('.')} pill=$pillId sched=$scheduleId")
+        if (com.jagger.timer.backup.BackupManager.replacedInThisProcess) {
+            // A restore replaced the database under this process and it is about to exit; the fresh process re-arms everything.
+            ReminderLog.log("SKIPPED", "stale process after restore")
+            return
+        }
 
         when (action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
