@@ -109,7 +109,7 @@ class ReminderLogViewModel @Inject constructor(
     }
 }
 
-/** Settings > Reminder log: what is armed right now, and a trace of everything the reminder machinery did. */
+/** Settings > Developer tools > Reminder log: what is armed right now, and a trace of everything the reminder machinery did. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderLogScreen(onNavigateBack: () -> Unit, viewModel: ReminderLogViewModel = hiltViewModel()) {
