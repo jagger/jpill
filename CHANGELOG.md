@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-28
+
 ### Fixed
 - **Restoring a backup no longer crashes the app.** After a restore the old process kept running with its database closed, and the re-arm alarm fired in it a few seconds later and crashed it ("Database is closed"). jPill now closes itself right after a restore, a fresh process re-arms every reminder, and a stale process ignores the re-arm request.
 
@@ -234,7 +236,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/jagger/jpill/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/jagger/jpill/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/jagger/jpill/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/jagger/jpill/compare/v0.10.1...v0.10.2
