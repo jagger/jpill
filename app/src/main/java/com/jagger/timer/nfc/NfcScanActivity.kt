@@ -117,7 +117,7 @@ class NfcScanActivity : ComponentActivity() {
                 CloseRow(onClose)
             }
             is ScanUi.Done -> {
-                Title(ui.message)
+                Title(ui.loggedName?.let { "Logged ${if (hideName) "your medicine" else it}" } ?: ui.message)
                 // A phone that has never opened jPill hasn't allowed notifications yet; without them the timer
                 // would finish silently, so ask right here, then close.
                 val needsPermission = ui.timerStarted && ContextCompat.checkSelfPermission(

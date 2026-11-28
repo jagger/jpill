@@ -28,7 +28,7 @@ sealed interface ScanUi {
     /** A jPill medicine tag this phone doesn't know (new phone, or the medicine was deleted). */
     data class UnknownMedicine(val tagId: String, val name: String?) : ScanUi
     /** Success: shown briefly, then the screen closes. */
-    data class Done(val message: String, val timerStarted: Boolean = false) : ScanUi
+    data class Done(val message: String, val timerStarted: Boolean = false, val loggedName: String? = null) : ScanUi
     /** A medicine tag was scanned while the NFC beta switch is off. (Timer tags always work: see [handle].) */
     data object BetaOff : ScanUi
     data class Invalid(val message: String) : ScanUi
@@ -106,7 +106,7 @@ class NfcScanViewModel @Inject constructor(
             scheduleManager.refreshAlarmsForPill(pill) // re-plans the next dose and redraws the widget
             scheduleManager.dismissReminder(pill.id)
             onLogged()
-            _ui.value = ScanUi.Done("Logged ${pill.name}")
+            _ui.value = ScanUi.Done("Logged", loggedName = pill.name)
         }
     }
 

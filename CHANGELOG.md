@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Security
+- **Other apps can no longer send jPill's reminder receiver commands.** It was exported, so any app on the phone could have sent a fake "Taken" or "Skip" for a medicine and changed dose history and supply. It now accepts only the system's boot/update/time broadcasts and jPill's own alarms and notification buttons.
+- **The app lock fails closed.** If the phone reported a temporary biometric problem, jPill used to switch the lock off; now it only does that when the phone has no screen lock or biometrics at all.
+- **Medicine names no longer appear in the reminder log** (which is also copied to logcat and can be shared), and the NFC "Logged" confirmation respects "hide names on lock screen".
+- Shared exports (history CSV, reminder log) are deleted from the cache when the app starts, not left there until the next export.
+- Tag ids passed to Add Medicine are validated and URL-encoded, and the Gradle distribution is pinned by SHA-256.
+
 ## [0.11.0] - 2026-11-27
 
 ### Changed

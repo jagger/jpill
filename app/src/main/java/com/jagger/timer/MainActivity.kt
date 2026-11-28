@@ -117,7 +117,11 @@ class MainActivity : FragmentActivity() {
                     val p = prefill
                     if (p != null && !locked) {
                         prefill = null
-                        navController.navigate("pill_form?pillId=-1&tag=${p.first}&name=${android.net.Uri.encode(p.second.orEmpty())}")
+                        // MainActivity is exported, so these extras may come from any app: only a well-formed tag id is used,
+                        // and both values are encoded so they can't add route arguments of their own.
+                        if (com.jagger.timer.nfc.NfcTagUri.isValidId(p.first)) {
+                            navController.navigate("pill_form?pillId=-1&tag=${android.net.Uri.encode(p.first)}&name=${android.net.Uri.encode(p.second.orEmpty().take(com.jagger.timer.nfc.NfcPayload.MAX_LABEL))}")
+                        }
                     }
                 }
                 val goTop: (String) -> Unit = { route ->
@@ -268,11 +272,16 @@ class MainActivity : FragmentActivity() {
     private fun promptUnlock() {
         if (prompting) return
         val allowed = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-        if (BiometricManager.from(this).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
-            // Screen lock was removed since the lock was turned on: don't lock the user out of their medicines.
-            appSettings.lockEnabled = false
-            locked = false
-            return
+        when (BiometricManager.from(this).canAuthenticate(allowed)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> {}
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED, BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
+                // Screen lock was removed since the lock was turned on: don't lock the user out of their medicines.
+                appSettings.lockEnabled = false
+                locked = false
+                return
+            }
+            // Any other state (temporarily unavailable, security update pending, unknown) stays locked: fail closed.
+            else -> return
         }
         prompting = true
         val prompt = BiometricPrompt(

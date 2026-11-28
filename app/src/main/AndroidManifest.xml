@@ -29,10 +29,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Not exported: it logs doses (Taken/Skip) and posts notifications, so no other app may send it intents.
+             The system still delivers the boot/update/time broadcasts, and our own PendingIntents are explicit. -->
         <receiver
             android:name=".core.receiver.AlarmReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <!-- Updating the app cancels every alarm it set; re-arm them. Same when the clock or zone changes. -->
