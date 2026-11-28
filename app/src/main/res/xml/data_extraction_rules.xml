@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  jPill keeps health data, so none of it goes to cloud backup (Google Drive etc.).
+  Phone-to-phone transfer over a cable or Wi-Fi Direct is still allowed, and Settings > Backup and restore
+  makes an encrypted file the user controls.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" />
+        <include domain="file" />
+        <include domain="database" />
+        <include domain="sharedpref" />
+    </device-transfer>
+</data-extraction-rules>

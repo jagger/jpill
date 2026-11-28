@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - **The app lock fails closed.** If the phone reported a temporary biometric problem, jPill used to switch the lock off; now it only does that when the phone has no screen lock or biometrics at all.
 - **Medicine names no longer appear in the reminder log** (which is also copied to logcat and can be shared), and the NFC "Logged" confirmation respects "hide names on lock screen".
 - Shared exports (history CSV, reminder log) are deleted from the cache when the app starts, not left there until the next export.
+- **Cloud backup is blocked.** Your medicines and dose history are no longer included in Android's automatic cloud backup. Direct phone-to-phone transfer still works.
 - Tag ids passed to Add Medicine are validated and URL-encoded, and the Gradle distribution is pinned by SHA-256.
 
 ## [0.11.0] - 2026-11-27

@@ -23,7 +23,7 @@ jPill reminds you when to take your medicines, logs every dose, keeps an eye on 
 
 - **No network.** The app does not request the `INTERNET` permission, so it cannot send anything anywhere. (Its manifest also lists `ACCESS_NETWORK_STATE`, which an AndroidX library adds; it only lets an app see whether a connection exists, not use it.) There are no accounts, ads, analytics or crash reporters.
 - **Your data lives on the device** in a local database. The app lock only guards the screen; the database itself is not encrypted beyond Android's own storage protection (reminders have to work while the app is locked, and keys tied to your fingerprint cannot be used by background alarms).
-- **Backups:** Android's automatic backup is allowed for the app. If you have device backup turned on, app data can be included in it, under the rules and encryption of your phone's backup service.
+- **Backups:** jPill's data is excluded from Android's cloud backup (Google Drive etc.), so it is never uploaded automatically. Direct phone-to-phone transfer is still allowed.
 - **NFC tags** carry a random id plus the medicine or timer name (the medicine name is optional per tag), readable by anyone with an NFC phone. They never carry a dose or any other detail.
 - **Share and export are manual.** Nothing leaves the phone unless you share a CSV yourself.
 - **Delete all data** (Settings, Privacy and data) wipes every medicine, dose, schedule and timer and cancels their reminders.
