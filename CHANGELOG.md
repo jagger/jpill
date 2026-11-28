@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-28
+
 ### Added
 - **Encrypted backup and restore** (Settings > Backup and restore). Make a backup file protected by a passphrase you choose (AES-256-GCM, key derived with PBKDF2) and keep it wherever you like; jPill uploads nothing. Restoring checks the file first, keeps a safety copy of your current data for up to a week (also removed by Delete all data), and re-arms every reminder.
 
@@ -229,7 +231,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Scheduling engine with AlarmManager exact alarms and a foreground reminder service.
 - Basic home screen for testing, and runtime notification permission for Android 15.
 
-[Unreleased]: https://github.com/jagger/jpill/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/jagger/jpill/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/jagger/jpill/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/jagger/jpill/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/jagger/jpill/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/jagger/jpill/compare/v0.10.0...v0.10.1
