@@ -165,12 +165,16 @@ class MainActivity : FragmentActivity() {
                             onAppearance = { navController.navigate("settings/appearance") },
                             onPrivacy = { navController.navigate("settings/privacy") },
                             onReliability = { navController.navigate("settings/reliability") },
+                            onBackup = { navController.navigate("settings/backup") },
                             onDeveloper = { navController.navigate("settings/developer") },
                             onAbout = { navController.navigate("settings/about") }
                         )
                     }
                     composable("settings/appearance") {
                         AppearanceScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable("settings/backup") {
+                        com.jagger.timer.settings.ui.BackupScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable("settings/developer") {
                         com.jagger.timer.settings.ui.DeveloperToolsScreen(

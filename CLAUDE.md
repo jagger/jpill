@@ -151,6 +151,12 @@ In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: 
 - Bundled names: `tools/build_drug_dataset.py` builds `app/src/main/assets/drugs.csv` from the openFDA NDC directory (CC0, https://open.fda.gov/terms/). Names/strengths/ingredients only (826 rows, ~60 KB). Provenance, license, cleaning rules and known limits are in `docs/DATASETS.md`. Regenerate with `python3 tools/build_drug_dataset.py` (network, ~30 min); `--clean raw.csv out.csv` re-applies the cleaning offline.
 - DB encryption is deferred: biometric-gated keys can't be used by background alarms/notification actions, and Keystore keys don't survive backup restore.
 
+## Backup and restore
+
+- Cloud backup is blocked (`res/xml/data_extraction_rules.xml`); device-to-device transfer is allowed. The user's own copy is `backup/BackupManager` + `BackupCrypto` (pure, unit-tested): `VACUUM INTO` snapshot, AES-256-GCM, PBKDF2-HMAC-SHA256 600k iterations, header authenticated, file picked through the system picker (no storage permission). Passphrase min 8 chars (a PIN is brute-forceable offline, so we don't offer one).
+- Restore validates BEFORE touching live data (magic, `PRAGMA integrity_check`, required tables, `user_version` <= `DB_VERSION`), keeps `filesDir/pre-restore.db` (purged after 7 days and by Delete all data), calls `DataEraser.eraseAll()` to cancel old alarms, closes and replaces the DB file, then an alarm (`AlarmReceiver.ACTION_REARM_ALL`) re-arms everything in the fresh process; the UI forces the user to close the app. **Bump `DB_VERSION` (AppDatabase.kt) with every schema change.**
+- The snapshot/validate/swap path is Android-only and has no automated test. Verified by hand on the phone (2026-11-28, throwaway `.bktest` applicationId build): backup, wrong passphrase rejected with data untouched, delete all, restore, rows back, integrity ok, safety copy written, re-arm alarm fired in the fresh process. Repeat that on a throwaway build after touching it; never on the real install.
+
 ## Archive and Delete
 
 - **Archive** (`ScheduleManager.archivePill`): sets `isArchived`/`archivedAt` (DB v4), cancels schedule/cooldown/refill alarms and the pill's posted notifications. Schedules, supply and dose logs are kept. `PillDao.getAllPills()` and `getAsNeededPills()` exclude archived pills, so the home screen, alarms, boot restore and supply all ignore them. `restorePill` clears the flag and re-arms alarms. UI: Edit screen button; `archive/ui/ArchivedScreen` (Restore / Delete permanently), reached from the home top bar when `archivedCount > 0`.

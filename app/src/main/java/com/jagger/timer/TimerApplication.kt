@@ -12,5 +12,6 @@ class TimerApplication : Application() {
         // Shared exports (history CSV, reminder log) hold health data in plain text; don't leave them in the cache.
         runCatching { java.io.File(cacheDir, "exports").deleteRecursively() }
         com.jagger.timer.core.receiver.ReminderNotifier.ensureChannel(this)
+        runCatching { com.jagger.timer.backup.BackupManager.purgeStaleSafetyCopy(this) }
     }
 }

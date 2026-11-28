@@ -12,6 +12,10 @@ import com.jagger.timer.core.data.local.entity.DoseLogEntity
 import com.jagger.timer.core.data.local.entity.PillEntity
 import com.jagger.timer.core.data.local.entity.ScheduleEntity
 
+/** Bump with every schema change (and add the Migration). Backups restore only databases up to this version. */
+const val DB_VERSION = 7
+const val DB_NAME = "jaggernautimer_db"
+
 @Database(
     entities = [
         PillEntity::class,
@@ -19,7 +23,7 @@ import com.jagger.timer.core.data.local.entity.ScheduleEntity
         DoseLogEntity::class,
         TimerEntity::class
     ],
-    version = 7,
+    version = DB_VERSION,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

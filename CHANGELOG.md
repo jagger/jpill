@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- **Encrypted backup and restore** (Settings > Backup and restore). Make a backup file protected by a passphrase you choose (AES-256-GCM, key derived with PBKDF2) and keep it wherever you like; jPill uploads nothing. Restoring checks the file first, keeps a safety copy of your current data for up to a week (also removed by Delete all data), and re-arms every reminder.
+
 ### Security
 - **Other apps can no longer send jPill's reminder receiver commands.** It was exported, so any app on the phone could have sent a fake "Taken" or "Skip" for a medicine and changed dose history and supply. It now accepts only the system's boot/update/time broadcasts and jPill's own alarms and notification buttons.
 - **The app lock fails closed.** If the phone reported a temporary biometric problem, jPill used to switch the lock off; now it only does that when the phone has no screen lock or biometrics at all.
