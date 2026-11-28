@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -756,7 +757,7 @@ private fun UnitDropdown(unit: String, onUnit: (String) -> Unit, modifier: Modif
             label = { Text("Unit") },
             trailingIcon = { androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Changed
+- **Libraries and build tools brought up to date** (Android Gradle Plugin 9.5, Gradle 9.9, Kotlin 2.4.21, Compose BOM 2026.11, Room 2.8, Hilt 2.60, and the other AndroidX libraries). A check of every bundled library against the OSV vulnerability database found no known advisories; the previous Kotlin build plugin had one (build-time only, fixed in Kotlin 2.4.20). No new permissions or exported components.
+
 ## [0.12.1] - 2026-11-28
 
 ### Fixed
