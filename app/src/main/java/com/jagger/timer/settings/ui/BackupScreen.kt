@@ -112,12 +112,20 @@ fun BackupScreen(onNavigateBack: () -> Unit, viewModel: BackupViewModel = hiltVi
             text = { Text(s.text) },
             confirmButton = { TextButton(onClick = viewModel::dismissMessage) { Text("OK") } }
         )
-        BackupUi.RestoredRestartNeeded -> AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Backup restored") },
-            text = { Text("jPill needs to close to load your restored data. Open it again afterwards; your reminders are re-armed automatically.") },
-            confirmButton = { TextButton(onClick = { android.os.Process.killProcess(android.os.Process.myPid()) }) { Text("Close jPill") } }
-        )
+        BackupUi.RestoredRestartNeeded -> {
+            // The open database was replaced, so this process can't be used any more. Close it ourselves shortly rather than
+            // waiting for a tap: reminders are re-armed by a fresh process a few seconds later.
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(2_000)
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Backup restored") },
+                text = { Text("jPill is closing to load your restored data. Open it again in a few seconds; your reminders are re-armed automatically.") },
+                confirmButton = { TextButton(onClick = { android.os.Process.killProcess(android.os.Process.myPid()) }) { Text("Close now") } }
+            )
+        }
         else -> {}
     }
 }
