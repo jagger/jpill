@@ -48,6 +48,8 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_COOLDOWN_DONE = "com.jagger.timer.ACTION_COOLDOWN_DONE"
         const val ACTION_REFILL_DUE = "com.jagger.timer.ACTION_REFILL_DUE"
         const val ACTION_MISSED_CHECK = "com.jagger.timer.ACTION_MISSED_CHECK"
+        /** Internal: re-arm everything (sent to ourselves after a backup restore). */
+        const val ACTION_REARM_ALL = "com.jagger.timer.ACTION_REARM_ALL"
         const val ACTION_TIMER_DONE = "com.jagger.timer.ACTION_TIMER_DONE"
         const val TIMER_CHANNEL_ID = "timers"
         const val EXTRA_TIMER_ID = "TIMER_ID"
@@ -76,7 +78,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
-            Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
+            Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, ACTION_REARM_ALL -> {
                 val pendingResult = goAsync()
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {

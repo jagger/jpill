@@ -12,11 +12,13 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     val settings: AppSettings,
-    private val eraser: DataEraser
+    private val eraser: DataEraser,
+    private val backups: com.jagger.timer.backup.BackupManager
 ) : ViewModel() {
     fun eraseAllData(onDone: () -> Unit) {
         viewModelScope.launch {
             eraser.eraseAll()
+            backups.deleteSafetyCopy()
             onDone()
         }
     }
