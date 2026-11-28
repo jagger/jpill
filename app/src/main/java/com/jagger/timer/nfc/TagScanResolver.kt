@@ -151,6 +151,9 @@ sealed interface TimerScanDecision {
 }
 
 object TimerScanResolver {
+    /** Scan-and-go: a new or idle/finished timer starts at once; a running or paused one asks first. */
+    fun startsImmediately(d: TimerScanDecision): Boolean = d is TimerScanDecision.CreateAndStart || d is TimerScanDecision.Start
+
     fun resolve(
         payload: NfcPayload.Timer,
         existing: com.jagger.timer.core.data.local.entity.TimerEntity?,

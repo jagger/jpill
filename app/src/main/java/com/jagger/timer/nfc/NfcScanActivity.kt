@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package com.jagger.timer.nfc
 
+import android.Manifest
 import android.app.KeyguardManager
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -55,21 +58,21 @@ import javax.inject.Inject
 
 /**
  * Opened by Android when a jPill NFC sticker is scanned. Shows a small confirm card (never the rest of the app, so
- * it works while the app lock is on) and only logs a dose or starts a timer after the user confirms.
+ * it works while the app lock is on). A dose is only logged after the user confirms; a timer tag is scan-and-go and starts at once.
  */
 @AndroidEntryPoint
 class NfcScanActivity : ComponentActivity() {
     private val viewModel: NfcScanViewModel by viewModels()
     @Inject lateinit var appSettings: AppSettings
+    private val notificationPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { finish() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
-        if (savedInstanceState == null && appSettings.nfcBetaEnabled) viewModel.handle(intent?.dataString)
+        if (savedInstanceState == null) viewModel.handle(intent?.dataString, appSettings.nfcBetaEnabled)
         setContent {
             JPillTheme {
                 val ui by viewModel.ui.collectAsState()
-                val betaOn by appSettings.nfcBetaFlow.collectAsState()
                 // The medicine name stays off a locked screen when the user chose to hide names there.
                 val hideName = remember { appSettings.hideNamesOnLockScreen && (getSystemService(KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked }
                 val none = remember { MutableInteractionSource() }
@@ -79,11 +82,7 @@ class NfcScanActivity : ComponentActivity() {
                 ) {
                     Card(Modifier.padding(24.dp).fillMaxWidth().clickable(interactionSource = none, indication = null) { }) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            if (!betaOn) {
-                                Title("NFC tags are switched off")
-                                Body("NFC tags are a beta feature. Turn them on in jPill under Settings, Beta features.")
-                                CloseRow { finish() }
-                            } else ScanCard(ui, hideName, onClose = { finish() }, onAddNew = { id, name -> openAddMedicine(id, name) })
+                            ScanCard(ui, hideName, onClose = { finish() }, onAddNew = { id, name -> openAddMedicine(id, name) })
                         }
                     }
                 }
@@ -94,7 +93,7 @@ class NfcScanActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (appSettings.nfcBetaEnabled) viewModel.handle(intent.dataString)
+        viewModel.handle(intent.dataString, appSettings.nfcBetaEnabled)
     }
 
     private fun openAddMedicine(tagId: String, name: String?) {
@@ -112,9 +111,23 @@ class NfcScanActivity : ComponentActivity() {
         when (ui) {
             ScanUi.Loading -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
             is ScanUi.Invalid -> { Title(ui.message); CloseRow(onClose) }
+            ScanUi.BetaOff -> {
+                Title("Medicine tags are switched off")
+                Body("Medicine tags are a beta feature. Turn them on in jPill under Settings, Developer tools, Beta features. Timer tags work without it.")
+                CloseRow(onClose)
+            }
             is ScanUi.Done -> {
                 Title(ui.message)
-                LaunchedEffect(ui) { delay(1200); finish() }
+                // A phone that has never opened jPill hasn't allowed notifications yet; without them the timer
+                // would finish silently, so ask right here, then close.
+                val needsPermission = ui.timerStarted && ContextCompat.checkSelfPermission(
+                    this@NfcScanActivity, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+                if (needsPermission) Body("Allow notifications so jPill can tell you when it's done.")
+                LaunchedEffect(ui) {
+                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else { delay(1200); finish() }
+                }
             }
             is ScanUi.UnknownMedicine -> {
                 Title("Tag not linked here")
@@ -200,16 +213,8 @@ class NfcScanActivity : ComponentActivity() {
     @Composable
     private fun TimerCard(d: TimerScanDecision, onClose: () -> Unit) {
         when (d) {
-            is TimerScanDecision.CreateAndStart -> {
-                Title("Start ${d.payload.label.ifBlank { "timer" }}?")
-                Body(TimerLogic.format(d.payload.seconds * 1000))
-                ConfirmRow("Start timer", onClose) { viewModel.startTimerFromTag(d.payload) }
-            }
-            is TimerScanDecision.Start -> {
-                Title("Start ${d.timer.label.ifBlank { "timer" }}?")
-                Body(TimerLogic.format(d.timer.durationMillis))
-                ConfirmRow("Start timer", onClose) { viewModel.restartTimer(d.timer.id, d.timer.label) }
-            }
+            // New and idle timers start straight away (scan-and-go), so they never reach this card.
+            is TimerScanDecision.CreateAndStart, is TimerScanDecision.Start -> Unit
             is TimerScanDecision.AlreadyRunning -> {
                 Title("${d.timer.label.ifBlank { "Timer" }} is running")
                 Body("${TimerLogic.format(d.remainingMillis)} left")

@@ -66,7 +66,7 @@ Long-press the icon > **App info** > **Uninstall**. **This deletes all your jPil
 
 ## Beta features
 
-NFC tags (tap a sticker to confirm a dose or start a timer) are in beta and off by default. Turn them on in **Settings > Beta features**.
+NFC tags (tap a sticker to confirm a dose or start a timer) are in beta and off by default. Turn them on in **Settings > Developer tools > Beta features**.
 
 ## Build it yourself instead
 

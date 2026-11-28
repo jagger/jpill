@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
  * Persistent on-device trace of the reminder machinery: alarms armed, alarms that fired, notifications posted,
  * actions tapped, and why anything failed. Reminders are the point of the app, so when one goes missing this file
  * says which step broke. Lives in the app's own folder (not readable by other apps), is capped in size, and can be
- * shared or cleared from Settings > Reminder log. Also mirrored to logcat under the tag [TAG].
+ * shared or cleared from Settings > Developer tools > Reminder log. Also mirrored to logcat under the tag [TAG].
  */
 object ReminderLog {
     const val TAG = "jPillAlarm"

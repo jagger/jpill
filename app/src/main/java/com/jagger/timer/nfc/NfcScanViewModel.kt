@@ -28,7 +28,9 @@ sealed interface ScanUi {
     /** A jPill medicine tag this phone doesn't know (new phone, or the medicine was deleted). */
     data class UnknownMedicine(val tagId: String, val name: String?) : ScanUi
     /** Success: shown briefly, then the screen closes. */
-    data class Done(val message: String) : ScanUi
+    data class Done(val message: String, val timerStarted: Boolean = false) : ScanUi
+    /** A medicine tag was scanned while the NFC beta switch is off. (Timer tags always work: see [handle].) */
+    data object BetaOff : ScanUi
     data class Invalid(val message: String) : ScanUi
 }
 
@@ -42,20 +44,44 @@ class NfcScanViewModel @Inject constructor(
     private val _ui = MutableStateFlow<ScanUi>(ScanUi.Loading)
     val ui: StateFlow<ScanUi> = _ui.asStateFlow()
 
-    fun handle(uri: String?) {
+    /**
+     * Timer tags are scan-and-go and work on any phone with jPill, whatever the beta switch says: the tag carries
+     * the name and length, and an idle or new timer starts straight away with no confirm tap (a stray scan only
+     * starts a countdown). Running/paused timers still ask, so a scan can't silently reset one. Medicine tags log
+     * doses, so they stay behind the beta switch and a confirm card.
+     */
+    fun handle(uri: String?, nfcBetaOn: Boolean) {
         _ui.value = ScanUi.Loading
         viewModelScope.launch {
             val now = System.currentTimeMillis()
-            _ui.value = when (val payload = NfcPayload.parse(uri)) {
-                null -> ScanUi.Invalid("That isn't a jPill tag.")
-                is NfcPayload.Timer -> ScanUi.Timer(TimerScanResolver.resolve(payload, timerManager.getByNfcTag(payload.tagId), now))
+            when (val payload = NfcPayload.parse(uri)) {
+                null -> _ui.value = ScanUi.Invalid("That isn't a jPill tag.")
+                is NfcPayload.Timer -> {
+                    val decision = TimerScanResolver.resolve(payload, timerManager.getByNfcTag(payload.tagId), now)
+                    when {
+                        !TimerScanResolver.startsImmediately(decision) -> _ui.value = ScanUi.Timer(decision)
+                        decision is TimerScanDecision.CreateAndStart -> startNow(payload.tagId, payload.label, payload.seconds * 1000)
+                        decision is TimerScanDecision.Start -> restartNow(decision.timer.id, decision.timer.label, decision.timer.durationMillis)
+                    }
+                }
                 is NfcPayload.Medicine -> {
+                    if (!nfcBetaOn) { _ui.value = ScanUi.BetaOff; return@launch }
                     val pill = pillRepository.getPillByNfcTag(payload.tagId)
-                    if (pill == null) ScanUi.UnknownMedicine(payload.tagId, payload.name)
+                    _ui.value = if (pill == null) ScanUi.UnknownMedicine(payload.tagId, payload.name)
                     else ScanUi.Medicine(resolveMedicine(pill, now))
                 }
             }
         }
+    }
+
+    private suspend fun startNow(tagId: String, label: String, durationMillis: Long) {
+        timerManager.startFromTag(tagId, label, durationMillis)
+        _ui.value = ScanUi.Done("Started ${label.ifBlank { "timer" }}, ${com.jagger.timer.core.util.TimerLogic.format(durationMillis)}", timerStarted = true)
+    }
+
+    private suspend fun restartNow(id: Long, label: String, durationMillis: Long) {
+        timerManager.restart(id)
+        _ui.value = ScanUi.Done("Started ${label.ifBlank { "timer" }}, ${com.jagger.timer.core.util.TimerLogic.format(durationMillis)}", timerStarted = true)
     }
 
     private suspend fun resolveMedicine(pill: PillEntity, now: Long): ScanDecision {
@@ -84,14 +110,9 @@ class NfcScanViewModel @Inject constructor(
         }
     }
 
-    fun startTimerFromTag(p: NfcPayload.Timer) = viewModelScope.launch {
-        timerManager.startFromTag(p.tagId, p.label, p.seconds * 1000)
-        _ui.value = ScanUi.Done("Started ${p.label.ifBlank { "timer" }}")
-    }
-
     fun restartTimer(id: Long, label: String) = viewModelScope.launch {
         timerManager.restart(id)
-        _ui.value = ScanUi.Done("Started ${label.ifBlank { "timer" }}")
+        _ui.value = ScanUi.Done("Started ${label.ifBlank { "timer" }}", timerStarted = true)
     }
 
     fun resumeTimer(id: Long, label: String) = viewModelScope.launch {

@@ -55,15 +55,15 @@ If the system JDK is a JRE without `javac`, point Gradle at a full JDK 17, e.g.
 
 ## Reminder reliability
 
-- `reliability/ReminderHealth` (pure, tested) models the four checks and the banner text; `ReminderHealthChecker` reads the phone (`areNotificationsEnabled` + the `pill_reminders` channel, `isIgnoringBatteryOptimizations`, `canUseFullScreenIntent`, `canScheduleExactAlarms`) and builds the fix intents (the system battery prompt needs `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). `ReliabilityViewModel` re-checks on every resume (`RefreshOnResume`) and stores the one-week "Not now" snooze in `AppSettings`.
+- `reliability/ReminderHealth` (pure, tested) models the four checks and the banner text; `ReminderHealthChecker` reads the phone (`areNotificationsEnabled` + the two reminder channels, `isIgnoringBatteryOptimizations`, `canUseFullScreenIntent`, `canScheduleExactAlarms`) and builds the fix intents (the system battery prompt needs `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). `ReliabilityViewModel` re-checks on every resume (`RefreshOnResume`) and stores the one-week "Not now" snooze in `AppSettings`.
 - UI: `ReliabilityBanner` is the first item in Home's list; `ReliabilityScreen` is Settings > Reminder reliability. Apps cannot flip these settings silently, only ask; Samsung's Sleeping/Deep sleeping lists have no API, so that tip is static text shown on Samsung devices.
 
 ## NFC Tags
 
-- **Beta, off by default:** `AppSettings.nfcBetaEnabled` (Settings > Beta features). It hides the medicine-form NFC section and the timer NFC button, and `NfcScanActivity` just says tags are switched off. Remove the gate once tags are proven on real stickers.
+- **Beta, off by default:** `AppSettings.nfcBetaEnabled` (Settings > Developer tools > Beta features). It hides the medicine-form NFC section and the timer NFC button, and medicine scans in `NfcScanActivity` just say tags are switched off. Timer tags are never gated: they are scan-and-go (a new or idle timer starts with no confirm tap, created from the tag's own label/secs; running/paused ones still ask), and the card asks for the notification permission if this phone hasn't granted it yet. Remove the gate once tags are proven on real stickers.
 
 - `nfc/NfcPayload` (pure) is the tag format: `jpill://tag/<id>[?name=..]` for a medicine, `jpill://timer/<id>?label=..&secs=..` for a timer. `NfcTagUri` makes/validates the 128-bit random id. Never put a dose or other medicine detail on a tag.
-- `nfc/TagScanResolver` (pure) turns a scanned medicine into a `ScanDecision` (due / early / already taken / as-needed ready or early / archived / unknown) using `DoseCoverage` (2 h early window), `CooldownCalculator` and the shared-ingredient warning; `TimerScanResolver` does the same for timers. The user always confirms before anything is logged or started.
+- `nfc/TagScanResolver` (pure) turns a scanned medicine into a `ScanDecision` (due / early / already taken / as-needed ready or early / archived / unknown) using `DoseCoverage` (2 h early window), `CooldownCalculator` and the shared-ingredient warning; `TimerScanResolver` does the same for timers. A dose is only logged after the user confirms; new/idle timers start immediately (`startsImmediately`), running/paused ones ask.
 - `nfc/NfcScanActivity` is exported with an `NDEF_DISCOVERED` filter for `jpill://tag` and `jpill://timer`; it shows a confirm card only (so it works over the lock screen and with the app lock on) and hides the medicine name on a locked screen when that setting is on. `NfcScanViewModel` logs through the normal `PillRepository.logDose` + `ScheduleManager.refreshAlarmsForPill` path.
 - `nfc/NfcTagIo` reads/writes NDEF in reader mode (foreground activity only); `nfc/NfcTagPanel` is the write/rewrite/link/remove UI used by the medicine form and the timer dialog. `NfcTagDirectory` keeps one sticker from being linked to two things.
 - DB v7 adds a nullable unique `nfcTagId` to `pills` and `timers` (`MIGRATION_6_7`). Test simulated scans without hardware: `adb shell "am start -a android.nfc.action.NDEF_DISCOVERED -d 'jpill://timer/<22-char-id>?label=Washer&secs=2700'"` (quote the URL for the device shell).
@@ -100,8 +100,7 @@ app/src/main/java/com/jagger/timer/
       model/      TimelineEntry          — pill + schedule + dueTime
       repository/ PillRepository
     di/           DatabaseModule
-    receiver/     AlarmReceiver (BOOT_COMPLETED + pill alarm action)
-    service/      PillReminderService (foreground, specialUse type)
+    receiver/     AlarmReceiver (boot/update/time-change re-arm, reminder, missed check, actions), ReminderNotifier
     util/         AlarmScheduler, ScheduleCalculator, ScheduleManager, CooldownCalculator, SupplyCalculator,
                   RxFormLogic (+RefillPlanner), RefillState, DurationFormat
   MainActivity.kt                        — NavHost: "home" → "pill_form?pillId={pillId}"
@@ -140,7 +139,7 @@ In-memory projection: `pill: PillEntity`, `schedule: ScheduleEntity`, `dueTime: 
 - `ScheduleManager` — orchestrates repository + scheduler:
   - `refreshAlarms()` / `refreshAlarmsForPill()` — (re)schedule AlarmManager alarms; call after any pill/schedule/dose change and on boot
   - `getUpcomingDoses(hours: Long = 24)` — returns sorted `List<TimelineEntry>` for the next N hours; used by `HomeViewModel.timeline`
-- `AlarmReceiver` — handles `BOOT_COMPLETED` (refreshes all alarms) and `ACTION_PILL_REMINDER` (starts `PillReminderService`)
+- `AlarmReceiver` — handles `BOOT_COMPLETED`/update/time changes (refreshes all alarms) and `ACTION_PILL_REMINDER` (posts the reminder via `ReminderNotifier`)
 
 ## Prescriptions
 
@@ -167,19 +166,16 @@ For medicines taken when needed (ibuprofen, acetaminophen, ...), not on a schedu
 - `HomeViewModel.asNeeded` combines pills + logs + a 5s ticker. `AsNeededItem` carries `nowMillis` on purpose: without it StateFlow de-dupes equal states and the countdown stops redrawing.
 - When a wait ends, `ScheduleManager.refreshCooldownAlarm` has `AlarmScheduler` set a one-shot `setExactAndAllowWhileIdle` alarm (`ACTION_COOLDOWN_DONE`, request code = pill id). `AlarmReceiver` re-checks the cooldown and posts a normal-priority "available again" notification on the `dose_available` channel. Refreshed after Take now, on save, and on boot; cancelled on delete.
 
-## Notifications / Foreground Service
+## Notifications and the reminder log
 
-`PillReminderService` is a foreground service with type `specialUse`. It posts a `PRIORITY_MAX` / `CATEGORY_ALARM` notification with:
-- Full-screen intent → `MainActivity`
-- "Taken" action (currently routes back to `MainActivity`; wire up proper action handling)
-- `ongoing = true`, `autoCancel = false` (non-dismissable by default)
+- `AlarmReceiver.ACTION_PILL_REMINDER` calls `ReminderNotifier.post` directly (there is **no foreground service**: it used to be one, but simultaneous reminders replaced each other, Taken on one stopped it for all, and a refused start lost the reminder silently). One notification per medicine (id = `safeNotificationId(pillId)`), `ongoing`, with Taken / Skip / Snooze (10m) actions that log through `AlarmReceiver`. It stays until the user acts; a missed-dose check does NOT clear it; marking the dose Taken/Skipped inside the app clears it (`ScheduleManager.dismissDueReminder`).
+- Two channels, picked by schedule type: **`pill_reminders_alarm`** for timed doses (FIXED_TIME / INTERVAL / unknown): alarm sound on `USAGE_ALARM` so silent mode and Do Not Disturb (alarms allowed) don't mute it, `CATEGORY_ALARM`, full-screen intent. **`pill_reminders_general`** for TIME_SLOT doses ("Morning", no exact time): normal notification sound, `CATEGORY_REMINDER`, no full-screen. A channel's sound type is immutable once created, so changing it needs a new id (the old `pill_reminders` is deleted in `ReminderNotifier.ensureChannel`, also run from `TimerApplication`).
+- Slot doses get a 6 h missed grace (`MissedDoseDetector.SLOT_GRACE_MINUTES`) because a late dose is fine; others get 60 min.
+- Snooze is its own alarm (`AlarmScheduler.scheduleSnooze`, request code `1_000_000 + scheduleId`) so it can't replace the schedule's next regular alarm.
+- `reminderlog/ReminderLog` is a persistent trace (app's external files dir `reminder_log.txt`, capped, mirrored to logcat tag `jPillAlarm`): every ARM/PLAN, RECEIVED, NOTIFY (with notification/channel/DND state), DOSE ACTION, SNOOZE, MISSED (or `MISSED, NO ALARM` when the reminder alarm never fired), REARM. UI: Settings > Developer tools > Reminder log (armed list, Re-arm all, Share, Clear). Read it on the phone with `adb pull /sdcard/Android/data/com.jagger.timer/files/reminder_log.txt`. Android re-arm: `AlarmReceiver` handles BOOT_COMPLETED, MY_PACKAGE_REPLACED, TIME_SET and TIMEZONE_CHANGED with `refreshAlarms()`, and `MainActivity` runs `ScheduleManager.rearmMissing` on open (only catches alarms that are missing, not wrong ones). MY_PACKAGE_REPLACED was observed NOT being delivered after some `adb install -r` runs; cause unknown.
+- What's new: `whatsnew/WhatsNew` parses the bundled `CHANGELOG.md` (copied into assets by the `copyChangelog` Gradle task); after an update `MainActivity` shows every version newer than `AppSettings.lastSeenVersionCode`, cleared with "Got it". Settings > About > What's new reopens the last five.
 
-Required permissions declared in manifest:
-`USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `USE_FULL_SCREEN_INTENT`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`
-
-(`SCHEDULE_EXACT_ALARM` was removed — `USE_EXACT_ALARM` is preferred for API 33+ as it doesn't require user approval in Settings.)
-
-`POST_NOTIFICATIONS` is also requested at runtime in `MainActivity` (Android 13+).
+Permissions declared in the manifest: `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `USE_FULL_SCREEN_INTENT`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `NFC`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (no foreground-service permissions, no INTERNET). `POST_NOTIFICATIONS` is requested at runtime in `MainActivity`, and by the NFC scan card after a timer scan on a phone that never opened jPill.
 
 ## Key Conventions
 
@@ -197,7 +193,7 @@ Required permissions declared in manifest:
 - Room DB (v7) with pills, schedules, dose logs; migrations: 1->2 as-needed fields and `dose_logs.amount`, 2->3 prescriptions, 3->4 archiving, 4->5 timers, 5->6 ingredients
 - Full scheduling engine (fixed time, time slot, interval, weekly/monthly recurrence)
 - AlarmManager-based exact alarm scheduling, boot-completed restoration
-- Foreground service notification with full-screen intent; Taken / Skip / Snooze actions log from the notification
+- Reminder notifications (alarm-style for timed doses, quiet persistent for slot doses); Taken / Skip / Snooze actions log from the notification
 - Delete medication: button + confirm on the Edit screen -> `ScheduleManager.deletePill` (cancels alarms and posted notifications, clears `RefillState`, DB cascades schedules and dose logs)
 - Add / edit pill form with Material3 `TimePicker`; schedule type picker (Fixed/Slot/Interval)
 - Home screen: upcoming dose timeline (next 24h) with Taken/Skip, FAB, empty state
