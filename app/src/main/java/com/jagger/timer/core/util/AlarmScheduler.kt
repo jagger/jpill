@@ -46,7 +46,7 @@ class AlarmScheduler @Inject constructor(
         val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerAtMillis, pendingIntent)
         alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
         ReminderLog.log(
-            "ARM", "pill=${pill.id} (${pill.name}) sched=${schedule.id} fires=${ReminderLog.clock(triggerAtMillis)} " +
+            "ARM", "pill=${pill.id} sched=${schedule.id} fires=${ReminderLog.clock(triggerAtMillis)} " +
                 "exactAllowed=${alarmManager.canScheduleExactAlarms()}"
         )
     }

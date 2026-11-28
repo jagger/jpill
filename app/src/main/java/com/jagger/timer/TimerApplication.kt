@@ -9,6 +9,8 @@ class TimerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.jagger.timer.reminderlog.ReminderLog.init(this)
+        // Shared exports (history CSV, reminder log) hold health data in plain text; don't leave them in the cache.
+        runCatching { java.io.File(cacheDir, "exports").deleteRecursively() }
         com.jagger.timer.core.receiver.ReminderNotifier.ensureChannel(this)
     }
 }
